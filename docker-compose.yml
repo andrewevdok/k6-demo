@@ -1,0 +1,91 @@
+networks:
+  k6:
+  grafana:
+  influxdb:
+
+services:
+  influxdb:
+    image: influxdb:2.9-alpine@sha256:f551adeb94b6f97626d2043ec90ed17f81de18d15bb5412d2101e0965c93c797
+    networks:
+      - k6
+      - grafana
+      - influxdb
+    ports:
+      - "8086:8086"
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=${INFLUX_ADMIN_USER:-admin}
+      - DOCKER_INFLUXDB_INIT_PASSWORD=${INFLUX_PASSWORD}
+      - DOCKER_INFLUXDB_INIT_ORG=performance
+      - DOCKER_INFLUXDB_INIT_BUCKET=k6
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${INFLUX_TOKEN}
+    volumes:
+      - influx-data:/var/lib/influxdb2
+      - ./influxdb/init.sh:/docker-entrypoint-initdb.d/init.sh:ro
+    healthcheck:
+      test: [ "CMD", "influx", "ping", "--host", "http://localhost:8086" ]
+      interval: 5s
+      retries: 20
+
+
+  grafana:
+    image: grafana/grafana:13.2.2@sha256:ac461fb352abc50da10a51c7d02462e9c05488f11f53f14b3ad79a8145f638a0
+    networks:
+      - grafana
+      - influxdb
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_PLUGINS_PREINSTALL: "volkovlabs-echarts-panel"
+
+      INFLUX_TOKEN: ${INFLUX_TOKEN}
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - ./grafana:/etc/grafana/provisioning/
+    depends_on:
+      influxdb: { condition: service_healthy }
+
+  dummy-api:
+    build:
+      context: ./dummy-api
+    networks:
+      - k6
+    ports:
+      - "8000:8000"
+    environment:
+      JITTER_MS: ${DUMMY_JITTER_MS:-20}
+      ERROR_RATE: ${DUMMY_ERROR_RATE:-0}
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" ]
+      interval: 5s
+      retries: 10
+
+  k6:
+    build:
+      context: .
+      dockerfile: k6/Dockerfile
+    networks:
+      - k6
+    ports:
+      - "6565:6565"
+    environment:
+      K6_OUT: xk6-influxdb=http://influxdb:8086
+      K6_INFLUXDB_ORGANIZATION: performance
+      K6_INFLUXDB_BUCKET: k6
+      K6_INFLUXDB_INSECURE: "true"
+      K6_INFLUXDB_TOKEN: ${INFLUX_TOKEN}
+
+      INFLUX_URL: http://influxdb:8086
+      INFLUX_TOKEN: ${INFLUX_TOKEN}
+      INFLUX_ORG: performance
+      INFLUX_SUMMARY_BUCKET: k6_summaries
+
+    volumes:
+      - ./k6/scripts:/scripts
+    depends_on:
+      dummy-api: { condition: service_healthy }
+
+volumes:
+  influx-data:

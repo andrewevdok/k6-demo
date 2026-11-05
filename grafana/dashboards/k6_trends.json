@@ -1,0 +1,1695 @@
+{
+  "uid": "k6-trends",
+  "title": "k6 · Trends",
+  "tags": [
+    "k6",
+    "influxdb",
+    "flux",
+    "trends"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "refresh": "",
+  "graphTooltip": 1,
+  "time": {
+    "from": "now-180d",
+    "to": "now"
+  },
+  "timepicker": {
+    "hidden": true
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "env",
+        "label": "Env",
+        "type": "query",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "influx-k6"
+        },
+        "query": "import \"influxdata/influxdb/schema\"\nschema.tagValues(bucket: \"k6_summaries\", tag: \"env\", predicate: (r) => r._measurement == \"test_summary\", start: -180d)",
+        "refresh": 1,
+        "sort": 1,
+        "multi": false,
+        "includeAll": false,
+        "current": {}
+      },
+      {
+        "name": "test_name",
+        "label": "Test",
+        "type": "query",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "influx-k6"
+        },
+        "query": "import \"influxdata/influxdb/schema\"\nschema.tagValues(bucket: \"k6_summaries\", tag: \"test_name\", predicate: (r) => r._measurement == \"test_summary\" and r.env == \"${env}\", start: -180d)",
+        "refresh": 2,
+        "sort": 1,
+        "multi": false,
+        "includeAll": false,
+        "current": {}
+      },
+      {
+        "name": "endpoint",
+        "label": "Endpoint",
+        "type": "query",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "influx-k6"
+        },
+        "query": "from(bucket: \"k6_summaries\")\n  |> range(start: -180d)\n  |> filter(fn: (r) => r._measurement == \"endpoint_summary\" and r.test_name == \"${test_name}\" and r._field == \"p95\")\n  |> filter(fn: (r) => r.env == \"${env}\")\n  |> rename(columns: {test_id: \"testid\", request_name: \"endpoint\"})\n  |> keep(columns: [\"endpoint\"])\n  |> group()\n  |> distinct(column: \"endpoint\")",
+        "refresh": 2,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "current": {},
+        "allValue": ".*"
+      },
+      {
+        "name": "runs",
+        "label": "Number of runs",
+        "type": "custom",
+        "query": "5,10,20,30,50",
+        "current": {
+          "text": "20",
+          "value": "20"
+        },
+        "options": [
+          {
+            "text": "5",
+            "value": "5",
+            "selected": false
+          },
+          {
+            "text": "10",
+            "value": "10",
+            "selected": false
+          },
+          {
+            "text": "20",
+            "value": "20",
+            "selected": true
+          },
+          {
+            "text": "30",
+            "value": "30",
+            "selected": false
+          },
+          {
+            "text": "50",
+            "value": "50",
+            "selected": false
+          }
+        ]
+      },
+      {
+        "name": "pct",
+        "label": "Latency",
+        "type": "custom",
+        "query": "min,p90,p95,p99,max",
+        "current": {
+          "text": "p95",
+          "value": "p95"
+        },
+        "options": [
+          {
+            "text": "min",
+            "value": "min",
+            "selected": false
+          },
+          {
+            "text": "p90",
+            "value": "p90",
+            "selected": false
+          },
+          {
+            "text": "p95",
+            "value": "p95",
+            "selected": true
+          },
+          {
+            "text": "p99",
+            "value": "p99",
+            "selected": false
+          },
+          {
+            "text": "max",
+            "value": "max",
+            "selected": false
+          }
+        ]
+      }
+    ]
+  },
+  "annotations": {
+    "list": []
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "Trends by run (X = run number, higher = newer)",
+      "id": 8,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "panels": []
+    },
+    {
+      "type": "trend",
+      "title": "Latency by run",
+      "description": "One point = one test run",
+      "id": 9,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-k6"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 1
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-k6"
+          },
+          "refId": "A",
+          "query": "from(bucket: \"k6_summaries\")\n  |> range(start: -180d)\n  |> filter(fn: (r) => r._measurement == \"test_summary\" and r.test_name == \"${test_name}\")\n  |> filter(fn: (r) => r.env == \"${env}\")\n  |> rename(columns: {test_id: \"testid\"})\n  |> filter(fn: (r) => r._field =~ /^(min|avg|p90|p95|p99|max|testid)$/)\n  |> keep(columns: [\"_time\", \"_field\", \"_value\"])\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: ${runs})\n  |> sort(columns: [\"_time\"])\n  |> map(fn: (r) => ({r with run: 1}))\n  |> cumulativeSum(columns: [\"run\"])\n  |> drop(columns: [\"_time\"])"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "always",
+            "pointSize": 6,
+            "spanNulls": true,
+            "lineInterpolation": "linear",
+            "stacking": {
+              "mode": "none"
+            }
+          },
+          "decimals": 2,
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "run"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "displayName",
+                "value": "run"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "run # (higher = newer)"
+              },
+              {
+                "id": "min",
+                "value": 1
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "testid"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": true,
+                  "tooltip": false,
+                  "viz": true
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "testid"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "xField": "run",
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "trend",
+      "title": "RPS",
+      "description": "",
+      "id": 10,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-k6"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 12,
+        "y": 1
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-k6"
+          },
+          "refId": "A",
+          "query": "from(bucket: \"k6_summaries\")\n  |> range(start: -180d)\n  |> filter(fn: (r) => r._measurement == \"test_summary\" and r.test_name == \"${test_name}\")\n  |> filter(fn: (r) => r.env == \"${env}\")\n  |> rename(columns: {test_id: \"testid\"})\n  |> filter(fn: (r) => r._field =~ /^(rps|testid)$/)\n  |> keep(columns: [\"_time\", \"_field\", \"_value\"])\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: ${runs})\n  |> sort(columns: [\"_time\"])\n  |> map(fn: (r) => ({r with run: 1}))\n  |> cumulativeSum(columns: [\"run\"])\n  |> drop(columns: [\"_time\"])"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "always",
+            "pointSize": 6,
+            "spanNulls": true,
+            "lineInterpolation": "linear",
+            "stacking": {
+              "mode": "none"
+            }
+          },
+          "decimals": 2,
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "run"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "displayName",
+                "value": "run"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "run # (higher = newer)"
+              },
+              {
+                "id": "min",
+                "value": 1
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "testid"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": true,
+                  "tooltip": false,
+                  "viz": true
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "testid"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "xField": "run",
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "trend",
+      "title": "Error rate",
+      "description": "",
+      "id": 11,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-k6"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 1
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-k6"
+          },
+          "refId": "A",
+          "query": "from(bucket: \"k6_summaries\")\n  |> range(start: -180d)\n  |> filter(fn: (r) => r._measurement == \"test_summary\" and r.test_name == \"${test_name}\")\n  |> filter(fn: (r) => r.env == \"${env}\")\n  |> rename(columns: {test_id: \"testid\"})\n  |> filter(fn: (r) => r._field =~ /^(error_rate|testid)$/)\n  |> keep(columns: [\"_time\", \"_field\", \"_value\"])\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: ${runs})\n  |> sort(columns: [\"_time\"])\n  |> map(fn: (r) => ({r with run: 1}))\n  |> cumulativeSum(columns: [\"run\"])\n  |> drop(columns: [\"_time\"])"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "always",
+            "pointSize": 6,
+            "spanNulls": true,
+            "lineInterpolation": "linear",
+            "stacking": {
+              "mode": "none"
+            }
+          },
+          "decimals": 2,
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "run"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "displayName",
+                "value": "run"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "run # (higher = newer)"
+              },
+              {
+                "id": "min",
+                "value": 1
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "testid"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": true,
+                  "tooltip": false,
+                  "viz": true
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "testid"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "xField": "run",
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "barchart",
+      "title": "Successful / failed requests",
+      "description": "",
+      "id": 12,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-k6"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 9
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-k6"
+          },
+          "refId": "A",
+          "query": "from(bucket: \"k6_summaries\")\n  |> range(start: -180d)\n  |> filter(fn: (r) => r._measurement == \"test_summary\" and r.test_name == \"${test_name}\")\n  |> filter(fn: (r) => r.env == \"${env}\")\n  |> rename(columns: {test_id: \"testid\"})\n  |> filter(fn: (r) => r._field =~ /^(successful|failed|testid)$/)\n  |> keep(columns: [\"_time\", \"_field\", \"_value\"])\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: ${runs})\n  |> sort(columns: [\"_time\"])\n  |> map(fn: (r) => ({r with run: 1}))\n  |> cumulativeSum(columns: [\"run\"])\n  |> map(fn: (r) => ({r with run: string(v: r.run)}))\n  |> drop(columns: [\"_time\"])"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 80,
+            "lineWidth": 1,
+            "stacking": {
+              "mode": "normal"
+            }
+          },
+          "decimals": 2
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "failed"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "successful"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "run"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "displayName",
+                "value": "run"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "run # (higher = newer)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "testid"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": true,
+                  "tooltip": false,
+                  "viz": true
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "testid"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "xField": "run",
+        "stacking": "normal",
+        "showValue": "never",
+        "barWidth": 0.9,
+        "orientation": "vertical",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "type": "trend",
+      "title": "Test duration",
+      "description": "",
+      "id": 14,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-k6"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 9
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-k6"
+          },
+          "refId": "A",
+          "query": "from(bucket: \"k6_summaries\")\n  |> range(start: -180d)\n  |> filter(fn: (r) => r._measurement == \"test_summary\" and r.test_name == \"${test_name}\")\n  |> filter(fn: (r) => r.env == \"${env}\")\n  |> rename(columns: {test_id: \"testid\"})\n  |> filter(fn: (r) => r._field =~ /^(duration_ms|testid)$/)\n  |> keep(columns: [\"_time\", \"_field\", \"_value\"])\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: ${runs})\n  |> sort(columns: [\"_time\"])\n  |> map(fn: (r) => ({r with run: 1}))\n  |> cumulativeSum(columns: [\"run\"])\n  |> drop(columns: [\"_time\"])"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "always",
+            "pointSize": 6,
+            "spanNulls": true,
+            "lineInterpolation": "linear",
+            "stacking": {
+              "mode": "none"
+            }
+          },
+          "decimals": 2,
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "run"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "displayName",
+                "value": "run"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "run # (higher = newer)"
+              },
+              {
+                "id": "min",
+                "value": 1
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "testid"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": true,
+                  "tooltip": false,
+                  "viz": true
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "testid"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "xField": "run",
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "row",
+      "title": "Endpoints (endpoint_summary)",
+      "id": 15,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "panels": []
+    },
+    {
+      "type": "trend",
+      "title": "Latency ${pct} by endpoint",
+      "description": "",
+      "id": 16,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-k6"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 17
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-k6"
+          },
+          "refId": "A",
+          "query": "vals = from(bucket: \"k6_summaries\")\n  |> range(start: -180d)\n  |> filter(fn: (r) => r._measurement == \"endpoint_summary\" and r.test_name == \"${test_name}\" and r.request_name =~ /^${endpoint:regex}$/)\n  |> filter(fn: (r) => r.env == \"${env}\")\n  |> rename(columns: {test_id: \"testid\", request_name: \"endpoint\"})\n  |> filter(fn: (r) => r._field == \"${pct}\")\n  |> keep(columns: [\"_time\", \"endpoint\", \"_value\"])\n  |> group()\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"endpoint\"], valueColumn: \"_value\")\n\nids = from(bucket: \"k6_summaries\")\n  |> range(start: -180d)\n  |> filter(fn: (r) => r._measurement == \"endpoint_summary\" and r.test_name == \"${test_name}\" and r.request_name =~ /^${endpoint:regex}$/)\n  |> filter(fn: (r) => r.env == \"${env}\")\n  |> rename(columns: {test_id: \"testid\", request_name: \"endpoint\"})\n  |> filter(fn: (r) => r._field == \"requests\")\n  |> keep(columns: [\"_time\", \"testid\"])\n  |> group()\n  |> unique(column: \"testid\")\n\njoin(tables: {v: vals, i: ids}, on: [\"_time\"])\n  |> group()\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: ${runs})\n  |> sort(columns: [\"_time\"])\n  |> map(fn: (r) => ({r with run: 1}))\n  |> cumulativeSum(columns: [\"run\"])\n  |> drop(columns: [\"_time\"])"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "always",
+            "pointSize": 6,
+            "spanNulls": true,
+            "lineInterpolation": "linear",
+            "stacking": {
+              "mode": "none"
+            }
+          },
+          "decimals": 2,
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "run"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "displayName",
+                "value": "run"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "run # (higher = newer)"
+              },
+              {
+                "id": "min",
+                "value": 1
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "testid"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": true,
+                  "tooltip": false,
+                  "viz": true
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "testid"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "xField": "run",
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "trend",
+      "title": "Error rate by endpoint",
+      "description": "",
+      "id": 17,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-k6"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 26
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-k6"
+          },
+          "refId": "A",
+          "query": "vals = from(bucket: \"k6_summaries\")\n  |> range(start: -180d)\n  |> filter(fn: (r) => r._measurement == \"endpoint_summary\" and r.test_name == \"${test_name}\" and r.request_name =~ /^${endpoint:regex}$/)\n  |> filter(fn: (r) => r.env == \"${env}\")\n  |> rename(columns: {test_id: \"testid\", request_name: \"endpoint\"})\n  |> filter(fn: (r) => r._field == \"error_rate\")\n  |> keep(columns: [\"_time\", \"endpoint\", \"_value\"])\n  |> group()\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"endpoint\"], valueColumn: \"_value\")\n\nids = from(bucket: \"k6_summaries\")\n  |> range(start: -180d)\n  |> filter(fn: (r) => r._measurement == \"endpoint_summary\" and r.test_name == \"${test_name}\" and r.request_name =~ /^${endpoint:regex}$/)\n  |> filter(fn: (r) => r.env == \"${env}\")\n  |> rename(columns: {test_id: \"testid\", request_name: \"endpoint\"})\n  |> filter(fn: (r) => r._field == \"requests\")\n  |> keep(columns: [\"_time\", \"testid\"])\n  |> group()\n  |> unique(column: \"testid\")\n\njoin(tables: {v: vals, i: ids}, on: [\"_time\"])\n  |> group()\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: ${runs})\n  |> sort(columns: [\"_time\"])\n  |> map(fn: (r) => ({r with run: 1}))\n  |> cumulativeSum(columns: [\"run\"])\n  |> drop(columns: [\"_time\"])"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "always",
+            "pointSize": 6,
+            "spanNulls": true,
+            "lineInterpolation": "linear",
+            "stacking": {
+              "mode": "none"
+            }
+          },
+          "decimals": 2,
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "run"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "displayName",
+                "value": "run"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "run # (higher = newer)"
+              },
+              {
+                "id": "min",
+                "value": 1
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "testid"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": true,
+                  "tooltip": false,
+                  "viz": true
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "testid"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "xField": "run",
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "trend",
+      "title": "RPS by endpoint",
+      "description": "",
+      "id": 18,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-k6"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 26
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-k6"
+          },
+          "refId": "A",
+          "query": "vals = from(bucket: \"k6_summaries\")\n  |> range(start: -180d)\n  |> filter(fn: (r) => r._measurement == \"endpoint_summary\" and r.test_name == \"${test_name}\" and r.request_name =~ /^${endpoint:regex}$/)\n  |> filter(fn: (r) => r.env == \"${env}\")\n  |> rename(columns: {test_id: \"testid\", request_name: \"endpoint\"})\n  |> filter(fn: (r) => r._field == \"rps\")\n  |> keep(columns: [\"_time\", \"endpoint\", \"_value\"])\n  |> group()\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"endpoint\"], valueColumn: \"_value\")\n\nids = from(bucket: \"k6_summaries\")\n  |> range(start: -180d)\n  |> filter(fn: (r) => r._measurement == \"endpoint_summary\" and r.test_name == \"${test_name}\" and r.request_name =~ /^${endpoint:regex}$/)\n  |> filter(fn: (r) => r.env == \"${env}\")\n  |> rename(columns: {test_id: \"testid\", request_name: \"endpoint\"})\n  |> filter(fn: (r) => r._field == \"requests\")\n  |> keep(columns: [\"_time\", \"testid\"])\n  |> group()\n  |> unique(column: \"testid\")\n\njoin(tables: {v: vals, i: ids}, on: [\"_time\"])\n  |> group()\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: ${runs})\n  |> sort(columns: [\"_time\"])\n  |> map(fn: (r) => ({r with run: 1}))\n  |> cumulativeSum(columns: [\"run\"])\n  |> drop(columns: [\"_time\"])"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "always",
+            "pointSize": 6,
+            "spanNulls": true,
+            "lineInterpolation": "linear",
+            "stacking": {
+              "mode": "none"
+            }
+          },
+          "decimals": 2,
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "run"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "displayName",
+                "value": "run"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "run # (higher = newer)"
+              },
+              {
+                "id": "min",
+                "value": 1
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "testid"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": true,
+                  "tooltip": false,
+                  "viz": true
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "testid"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "xField": "run",
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max",
+            "mean"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "type": "table",
+      "title": "Regressions: latest run vs median of previous ${runs} runs (${pct})",
+      "id": 19,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-k6"
+      },
+      "description": "delta_pct > 0 means the endpoint is slower than the median of the previous N runs. Red = worst.",
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 34
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-k6"
+          },
+          "refId": "A",
+          "query": "sorted = from(bucket: \"k6_summaries\")\n  |> range(start: -180d)\n  |> filter(fn: (r) => r._measurement == \"endpoint_summary\" and r.test_name == \"${test_name}\" and r.request_name =~ /^${endpoint:regex}$/)\n  |> filter(fn: (r) => r.env == \"${env}\")\n  |> rename(columns: {test_id: \"testid\", request_name: \"endpoint\"})\n  |> filter(fn: (r) => r._field == \"${pct}\")\n  |> group(columns: [\"endpoint\"])\n  |> sort(columns: [\"_time\"], desc: true)\n\nlast = sorted |> limit(n: 1) |> group() |> keep(columns: [\"endpoint\", \"_value\"]) |> rename(columns: {_value: \"last\"})\nbase = sorted |> limit(n: ${runs}, offset: 1) |> quantile(q: 0.5, method: \"exact_selector\") |> group() |> keep(columns: [\"endpoint\", \"_value\"]) |> rename(columns: {_value: \"median\"})\n\njoin(tables: {l: last, b: base}, on: [\"endpoint\"])\n  |> group()\n  |> map(fn: (r) => ({r with delta_pct: if r.median > 0.0 then (r.last - r.median) / r.median * 100.0 else 0.0}))\n  |> sort(columns: [\"endpoint\"])"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "last"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "displayName",
+                "value": "Latest run"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "median"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "displayName",
+                "value": "Median of previous runs"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "delta_pct"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "displayName",
+                "value": "Δ, %"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 10
+                    },
+                    {
+                      "color": "red",
+                      "value": 25
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "endpoint",
+            "desc": false
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "table": true,
+              "result": true,
+              "_start": true,
+              "_stop": true,
+              "_measurement": true,
+              "test_name": true
+            },
+            "indexByName": {
+              "endpoint": 0,
+              "median": 1,
+              "last": 2,
+              "delta_pct": 3
+            },
+            "renameByName": {}
+          }
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Latest vs previous run (${pct})",
+      "id": 20,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-k6"
+      },
+      "description": "Δ > 0 means the endpoint got slower compared to the previous run. Endpoints missing from either of the two runs are not shown.",
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 43
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-k6"
+          },
+          "refId": "A",
+          "query": "sorted = from(bucket: \"k6_summaries\")\n  |> range(start: -180d)\n  |> filter(fn: (r) => r._measurement == \"endpoint_summary\" and r.test_name == \"${test_name}\" and r.request_name =~ /^${endpoint:regex}$/)\n  |> filter(fn: (r) => r.env == \"${env}\")\n  |> rename(columns: {test_id: \"testid\", request_name: \"endpoint\"})\n  |> filter(fn: (r) => r._field == \"${pct}\")\n  |> group(columns: [\"endpoint\"])\n  |> sort(columns: [\"_time\"], desc: true)\n\nlast = sorted |> limit(n: 1) |> group() |> keep(columns: [\"endpoint\", \"_value\"]) |> rename(columns: {_value: \"last\"})\nprev = sorted |> limit(n: 1, offset: 1) |> group() |> keep(columns: [\"endpoint\", \"_value\"]) |> rename(columns: {_value: \"prev\"})\n\njoin(tables: {l: last, p: prev}, on: [\"endpoint\"])\n  |> group()\n  |> map(fn: (r) => ({r with delta_ms: r.last - r.prev, delta_pct: if r.prev > 0.0 then (r.last - r.prev) / r.prev * 100.0 else 0.0}))\n  |> sort(columns: [\"endpoint\"])"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "last"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "displayName",
+                "value": "Latest"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "prev"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "displayName",
+                "value": "Previous"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "delta_ms"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "displayName",
+                "value": "Δ, ms"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "delta_pct"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "displayName",
+                "value": "Δ, %"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 10
+                    },
+                    {
+                      "color": "red",
+                      "value": 25
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "endpoint",
+            "desc": false
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "table": true,
+              "result": true,
+              "_start": true,
+              "_stop": true,
+              "_measurement": true,
+              "test_name": true
+            },
+            "indexByName": {
+              "endpoint": 0,
+              "prev": 1,
+              "last": 2,
+              "delta_ms": 3,
+              "delta_pct": 4
+            },
+            "renameByName": {}
+          }
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Runs",
+      "id": 21,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-k6"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 52
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-k6"
+          },
+          "refId": "A",
+          "query": "from(bucket: \"k6_summaries\")\n  |> range(start: -180d)\n  |> filter(fn: (r) => r._measurement == \"test_summary\" and r.test_name == \"${test_name}\")\n  |> filter(fn: (r) => r.env == \"${env}\")\n  |> rename(columns: {test_id: \"testid\"})\n  |> filter(fn: (r) => r._field =~ /^(testid|duration_ms|requests|failed|avg|p95|p99|rps|error_rate)$/)\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> group()\n  |> keep(columns: [\"_time\", \"testid\", \"duration_ms\", \"requests\", \"failed\", \"avg\", \"p95\", \"p99\", \"rps\", \"error_rate\"])\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: ${runs})\n  |> sort(columns: [\"_time\"])\n  |> map(fn: (r) => ({r with run: 1}))\n  |> cumulativeSum(columns: [\"run\"])\n  |> map(fn: (r) => ({r with from_ms: int(v: r._time) / 1000000 - 5000, to_ms: int(v: r._time) / 1000000 + int(v: r.duration_ms) + 5000}))\n  |> sort(columns: [\"_time\"], desc: true)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "run"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "displayName",
+                "value": "run"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "_time"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsIso"
+              },
+              {
+                "id": "displayName",
+                "value": "Start"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "duration_ms"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "displayName",
+                "value": "Duration"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "avg"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p95"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p99"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "rps"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "reqps"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "error_rate"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "displayName",
+                "value": "error_rate"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "testid"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Run"
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open run",
+                    "targetBlank": false,
+                    "url": "/d/k6-run-overview?var-env=${env:percentencode}&var-test_name=${test_name:percentencode}&var-test_id=${__data.fields.testid:percentencode}&from=${__data.fields.from_ms}&to=${__data.fields.to_ms}"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "from_ms"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom.viz",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "to_ms"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom.viz",
+                "value": true
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "Start",
+            "desc": true
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "table": true,
+              "result": true,
+              "_start": true,
+              "_stop": true,
+              "_measurement": true,
+              "test_name": true
+            },
+            "indexByName": {
+              "run": 0,
+              "_time": 1,
+              "testid": 2,
+              "duration_ms": 3,
+              "requests": 4,
+              "failed": 5,
+              "avg": 6,
+              "p95": 7,
+              "p99": 8,
+              "rps": 9,
+              "error_rate": 10
+            },
+            "renameByName": {}
+          }
+        }
+      ]
+    }
+  ],
+  "links": [
+    {
+      "title": "Compare runs",
+      "type": "link",
+      "icon": "dashboard",
+      "tooltip": "",
+      "url": "/d/k6-run-comparison?var-env=${env:percentencode}&var-test_name=${test_name:percentencode}",
+      "asDropdown": false,
+      "targetBlank": false,
+      "includeVars": false,
+      "keepTime": false,
+      "tags": []
+    }
+  ]
+}

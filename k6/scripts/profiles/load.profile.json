@@ -1,0 +1,32 @@
+{
+  "users": {
+    "numberOfUsers": 10,
+    "reachRps": 10,
+    "during": 20,
+    "holdFor": 60
+  },
+  "user": {
+    "numberOfUsers": 5,
+    "reachRps": 5,
+    "during": 20,
+    "holdFor": 60
+  },
+  "products": {
+    "numberOfUsers": 15,
+    "reachRps": 15,
+    "during": 20,
+    "holdFor": 60
+  },
+  "orders": {
+    "numberOfUsers": 5,
+    "reachRps": 5,
+    "during": 20,
+    "holdFor": 60
+  },
+  "search": {
+    "numberOfUsers": 10,
+    "reachRps": 10,
+    "during": 20,
+    "holdFor": 60
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "k6-summary-uploader",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "upload": "node dist/cli.js"
+  },
+  "dependencies": {
+    "@influxdata/influxdb-client": "^1.35.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.9.0"
+  }
+}

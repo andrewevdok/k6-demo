@@ -1,0 +1,2697 @@
+{
+  "apiVersion": "dashboard.grafana.app/v2",
+  "kind": "Dashboard",
+  "metadata": {
+    "name": "k6-endpoint-details",
+    "namespace": "default",
+    "uid": "k6-endpoint-details"
+  },
+  "spec": {
+    "annotations": [
+      {
+        "kind": "AnnotationQuery",
+        "spec": {
+          "builtIn": true,
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "query": {
+            "datasource": {
+              "name": "-- Grafana --"
+            },
+            "group": "grafana",
+            "kind": "DataQuery",
+            "spec": {},
+            "version": "v0"
+          }
+        }
+      }
+    ],
+    "cursorSync": "Crosshair",
+    "description": "Drill-down for a single HTTP request of a k6 run. Opened from Request Statistics on k6 · Run overview.",
+    "editable": true,
+    "elements": {
+      "panel-1": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "influx-k6"
+                      },
+                      "group": "influxdb",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "query": "from(bucket: \"k6\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"http_reqs\" and r._field == \"value\")\n  |> filter(fn: (r) => r.test_id == \"${test_id}\" and r.env == \"${env}\")\n  |> filter(fn: (r) => r.name == \"${request_name}\")\n  |> group()\n  |> sum()"
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "A"
+                  }
+                }
+              ],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "description": "All requests to this endpoint in the selected time range.",
+          "id": 1,
+          "links": [],
+          "title": "Total requests",
+          "vizConfig": {
+            "group": "stat",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      }
+                    ]
+                  },
+                  "unit": "short"
+                },
+                "overrides": []
+              },
+              "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "auto",
+                "wideLayout": true
+              }
+            },
+            "version": "13.2.2"
+          }
+        }
+      },
+      "panel-2": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "influx-k6"
+                      },
+                      "group": "influxdb",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "query": "import \"array\"\n\ndata = from(bucket: \"k6\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"http_reqs\" and r._field == \"value\")\n  |> filter(fn: (r) => r.test_id == \"${test_id}\" and r.env == \"${env}\")\n  |> filter(fn: (r) => r.name == \"${request_name}\")\n  |> group()\n\ntotal = (data |> count() |> findRecord(fn: (key) => true, idx: 0))._value\nfirstTime = (data |> first() |> findRecord(fn: (key) => true, idx: 0))._time\nlastTime = (data |> last() |> findRecord(fn: (key) => true, idx: 0))._time\nspanSec = float(v: int(v: lastTime) - int(v: firstTime)) / 1000000000.0\n\narray.from(rows: [{_value: if spanSec > 0.0 then float(v: total) / spanSec else 0.0}])"
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "A"
+                  }
+                }
+              ],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "description": "Requests per second between the first and the last request in the time range.",
+          "id": 2,
+          "links": [],
+          "title": "Avg RPS",
+          "vizConfig": {
+            "group": "stat",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      }
+                    ]
+                  },
+                  "unit": "reqps"
+                },
+                "overrides": []
+              },
+              "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "auto",
+                "wideLayout": true
+              }
+            },
+            "version": "13.2.2"
+          }
+        }
+      },
+      "panel-3": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "influx-k6"
+                      },
+                      "group": "influxdb",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "query": "from(bucket: \"k6\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"http_req_failed\" and r._field == \"value\")\n  |> filter(fn: (r) => r.test_id == \"${test_id}\" and r.env == \"${env}\")\n  |> filter(fn: (r) => r.name == \"${request_name}\")\n  |> group()\n  |> mean()\n  |> map(fn: (r) => ({r with _value: r._value * 100.0}))"
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "A"
+                  }
+                }
+              ],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "description": "Share of failed requests (k6 http_req_failed).",
+          "id": 3,
+          "links": [],
+          "title": "Error rate (%)",
+          "vizConfig": {
+            "group": "stat",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      },
+                      {
+                        "color": "orange",
+                        "value": 1
+                      },
+                      {
+                        "color": "red",
+                        "value": 5
+                      }
+                    ]
+                  },
+                  "unit": "percent"
+                },
+                "overrides": []
+              },
+              "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "auto",
+                "wideLayout": true
+              }
+            },
+            "version": "13.2.2"
+          }
+        }
+      },
+      "panel-4": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "influx-k6"
+                      },
+                      "group": "influxdb",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "query": "from(bucket: \"k6\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"http_req_duration\" and r._field == \"value\")\n  |> filter(fn: (r) => r.test_id == \"${test_id}\" and r.env == \"${env}\")\n  |> filter(fn: (r) => r.name == \"${request_name}\")\n  |> group()\n  |> quantile(q: 0.95, column: \"_value\", method: \"estimate_tdigest\")"
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "A"
+                  }
+                }
+              ],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "description": "95th percentile of http_req_duration over the time range.",
+          "id": 4,
+          "links": [],
+          "title": "p95 (ms)",
+          "vizConfig": {
+            "group": "stat",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      }
+                    ]
+                  },
+                  "unit": "ms"
+                },
+                "overrides": []
+              },
+              "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "auto",
+                "wideLayout": true
+              }
+            },
+            "version": "13.2.2"
+          }
+        }
+      },
+      "panel-5": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "influx-k6"
+                      },
+                      "group": "influxdb",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "query": "from(bucket: \"k6\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"http_req_duration\" and r._field == \"value\")\n  |> filter(fn: (r) => r.test_id == \"${test_id}\" and r.env == \"${env}\")\n  |> filter(fn: (r) => r.name == \"${request_name}\")\n  |> group()\n  |> quantile(q: 0.99, column: \"_value\", method: \"estimate_tdigest\")"
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "A"
+                  }
+                }
+              ],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "description": "99th percentile of http_req_duration over the time range.",
+          "id": 5,
+          "links": [],
+          "title": "p99 (ms)",
+          "vizConfig": {
+            "group": "stat",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      }
+                    ]
+                  },
+                  "unit": "ms"
+                },
+                "overrides": []
+              },
+              "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "auto",
+                "wideLayout": true
+              }
+            },
+            "version": "13.2.2"
+          }
+        }
+      },
+      "panel-6": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "influx-k6"
+                      },
+                      "group": "influxdb",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "query": "from(bucket: \"k6\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"http_req_duration\" and r._field == \"value\")\n  |> filter(fn: (r) => r.test_id == \"${test_id}\" and r.env == \"${env}\")\n  |> filter(fn: (r) => r.name == \"${request_name}\")\n  |> group()\n  |> max()"
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "A"
+                  }
+                }
+              ],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "description": "Slowest response in the time range.",
+          "id": 6,
+          "links": [],
+          "title": "Max (ms)",
+          "vizConfig": {
+            "group": "stat",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      }
+                    ]
+                  },
+                  "unit": "ms"
+                },
+                "overrides": []
+              },
+              "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "auto",
+                "wideLayout": true
+              }
+            },
+            "version": "13.2.2"
+          }
+        }
+      },
+      "panel-7": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "influx-k6"
+                      },
+                      "group": "influxdb",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "query": "// Raw samples are read once; every series below is derived from them in memory.\ndata = from(bucket: \"k6\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"http_req_duration\" and r._field == \"value\")\n  |> filter(fn: (r) => r.test_id == \"${test_id}\" and r.env == \"${env}\")\n  |> filter(fn: (r) => r.name == \"${request_name}\")\n  |> group()\n  |> keep(columns: [\"_start\", \"_stop\", \"_time\", \"_value\"])\n\nwindowSec = float(v: int(v: ${latency_window})) / 1000000000.0\npct = (q) => (tables=<-, column) => tables |> quantile(q: q, column: column, method: \"estimate_tdigest\")\nseries = (fn, name, order) => data\n  |> aggregateWindow(every: ${latency_window}, fn: fn, createEmpty: false)\n  |> set(key: \"_field\", value: name)\n  |> map(fn: (r) => ({r with order: order}))\n\n// Every request has exactly one http_req_duration sample, so their count per window is the request rate.\nrps = data\n  |> aggregateWindow(every: ${latency_window}, fn: count, createEmpty: true)\n  |> map(fn: (r) => ({r with _value: float(v: r._value) / windowSec}))\n  |> set(key: \"_field\", value: \"rps\")\n  |> map(fn: (r) => ({r with order: 0}))\n\n// One column per series, so Grafana names each field after it (min, p50, ... rps).\n// pivot() creates columns in the order it first meets them, so rows are sorted by series order first.\n// That is the legend and drawing order: rps comes first so its bars are drawn under the lines.\nunion(tables: [\n    series(fn: min, name: \"min\", order: 1),\n    series(fn: pct(q: 0.50), name: \"p50\", order: 2),\n    series(fn: mean, name: \"avg\", order: 3),\n    series(fn: pct(q: 0.95), name: \"p95\", order: 4),\n    series(fn: pct(q: 0.99), name: \"p99\", order: 5),\n    series(fn: max, name: \"max\", order: 6),\n    rps,\n  ])\n  |> keep(columns: [\"_time\", \"_field\", \"_value\", \"order\"])\n  |> group()\n  |> sort(columns: [\"order\", \"_time\"])\n  |> drop(columns: [\"order\"])\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> sort(columns: [\"_time\"])"
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "A"
+                  }
+                }
+              ],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "description": "Response time (left axis) computed from raw samples in each Latency window, against this endpoint's requests per second (bars, right axis). RPS is not in the legend, so it stays visible when you click a series. Latency growing with RPS shows where the endpoint saturates. One query reads the raw samples once and derives all series.",
+          "id": 7,
+          "links": [],
+          "title": "Latency (min / p50 / avg / p95 / p99 / max) vs RPS",
+          "vizConfig": {
+            "group": "timeseries",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "line",
+                    "fillOpacity": 0,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 2,
+                    "pointSize": 3,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "showValues": false,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "displayName": "${__field.name}",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      }
+                    ]
+                  },
+                  "unit": "ms",
+                  "min": 0
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "min"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "min"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "#73BF69",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "p50"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "p50"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "#B5D334",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "avg"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "avg"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "#FADE2A",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "p95"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "p95"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "#FF9830",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "p99"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "p99"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "#F2495C",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "max"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "max"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "#C4162A",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "rps"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "RPS"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "#8AB8FF",
+                          "mode": "fixed"
+                        }
+                      },
+                      {
+                        "id": "unit",
+                        "value": "reqps"
+                      },
+                      {
+                        "id": "custom.axisPlacement",
+                        "value": "right"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "RPS"
+                      },
+                      {
+                        "id": "min",
+                        "value": 0
+                      },
+                      {
+                        "id": "custom.hideFrom",
+                        "value": {
+                          "legend": true,
+                          "tooltip": false,
+                          "viz": false
+                        }
+                      },
+                      {
+                        "id": "custom.drawStyle",
+                        "value": "bars"
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 25
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 0
+                      }
+                    ]
+                  }
+                ]
+              },
+              "options": {
+                "legend": {
+                  "calcs": [
+                    "min",
+                    "mean",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "none"
+                }
+              }
+            },
+            "version": "13.2.2"
+          }
+        }
+      },
+      "panel-8": {
+        "kind": "Panel",
+        "spec": {
+          "id": 8,
+          "title": "Response time distribution (ms)",
+          "description": "Number of requests per response-time bucket: Histogram buckets equal buckets from min to p99, plus one bucket for the tail above p99. Bucket label is its upper bound.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "refId": "A",
+                    "query": {
+                      "datasource": {
+                        "name": "influx-k6"
+                      },
+                      "group": "influxdb",
+                      "kind": "DataQuery",
+                      "version": "v0",
+                      "spec": {
+                        "query": "import \"math\"\n\ndata = from(bucket: \"k6\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"http_req_duration\" and r._field == \"value\")\n  |> filter(fn: (r) => r.test_id == \"${test_id}\" and r.env == \"${env}\")\n  |> filter(fn: (r) => r.name == \"${request_name}\")\n  |> group()\n\nlo = (data |> min() |> findRecord(fn: (key) => true, idx: 0))._value\nhi = (data |> quantile(q: 0.99, method: \"estimate_tdigest\") |> findRecord(fn: (key) => true, idx: 0))._value\nbuckets = ${histogram_buckets}\nwidth = if hi > lo then (hi - lo) / float(v: buckets) else 1.0\n// Label precision follows bucket width so neighbouring labels stay distinct.\nscale = if width < 0.1 then 100.0 else if width < 1.0 then 10.0 else 1.0\nlabel = (x) => string(v: math.round(x: x * scale) / scale)\n\n// histogram() returns cumulative counts; difference() turns them into per-bucket counts.\n// The first edge sits just below the minimum, so its cumulative count is 0 and dropping it loses nothing.\ndata\n  |> histogram(bins: linearBins(start: lo - width * 0.001, width: width, count: buckets + 1, infinity: true))\n  |> difference()\n  |> map(fn: (r) => ({\n      bucket: if math.isInf(f: r.le, sign: 1) then \"> \" + label(x: hi) else label(x: r.le),\n      requests: r._value\n  }))"
+                      }
+                    }
+                  }
+                }
+              ],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "vizConfig": {
+            "group": "barchart",
+            "kind": "VizConfig",
+            "version": "13.2.2",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "fixed",
+                    "fixedColor": "#5794F2"
+                  },
+                  "custom": {
+                    "fillOpacity": 80,
+                    "gradientMode": "none",
+                    "lineWidth": 1,
+                    "axisLabel": "requests"
+                  },
+                  "unit": "short",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "options": {
+                "xField": "bucket",
+                "orientation": "vertical",
+                "showValue": "never",
+                "barWidth": 0.9,
+                "groupWidth": 0.7,
+                "xTickLabelRotation": -45,
+                "xTickLabelSpacing": 0,
+                "legend": {
+                  "showLegend": false,
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "calcs": []
+                },
+                "tooltip": {
+                  "mode": "single",
+                  "sort": "none",
+                  "hideZeros": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "panel-9": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "influx-k6"
+                      },
+                      "group": "influxdb",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "query": "from(bucket: \"k6\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"http_req_sending\" and r._field == \"value\")\n  |> filter(fn: (r) => r.test_id == \"${test_id}\" and r.env == \"${env}\")\n  |> filter(fn: (r) => r.name == \"${request_name}\")\n  |> group(columns: [])\n  |> aggregateWindow(every: ${latency_window}, fn: mean, createEmpty: false)"
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "sending"
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "influx-k6"
+                      },
+                      "group": "influxdb",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "query": "from(bucket: \"k6\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"http_req_waiting\" and r._field == \"value\")\n  |> filter(fn: (r) => r.test_id == \"${test_id}\" and r.env == \"${env}\")\n  |> filter(fn: (r) => r.name == \"${request_name}\")\n  |> group(columns: [])\n  |> aggregateWindow(every: ${latency_window}, fn: mean, createEmpty: false)"
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "waiting"
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "influx-k6"
+                      },
+                      "group": "influxdb",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "query": "from(bucket: \"k6\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"http_req_receiving\" and r._field == \"value\")\n  |> filter(fn: (r) => r.test_id == \"${test_id}\" and r.env == \"${env}\")\n  |> filter(fn: (r) => r.name == \"${request_name}\")\n  |> group(columns: [])\n  |> aggregateWindow(every: ${latency_window}, fn: mean, createEmpty: false)"
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "receiving"
+                  }
+                }
+              ],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "description": "sending + waiting + receiving = http_req_duration. waiting is time to first byte, i.e. server processing time.",
+          "id": 9,
+          "links": [],
+          "title": "Request phases - avg, stacked (ms)",
+          "vizConfig": {
+            "group": "timeseries",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "line",
+                    "fillOpacity": 60,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 2,
+                    "pointSize": 3,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "showValues": false,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "normal"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "displayName": "${__field.name}",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      }
+                    ]
+                  },
+                  "unit": "ms",
+                  "min": 0
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "sending"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "sending"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "#8AB8FF",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "waiting"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "waiting (TTFB)"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "#FF9830",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "receiving"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "receiving"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "#73BF69",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "options": {
+                "legend": {
+                  "calcs": [
+                    "mean",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "none"
+                }
+              }
+            },
+            "version": "13.2.2"
+          }
+        }
+      },
+      "panel-10": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "influx-k6"
+                      },
+                      "group": "influxdb",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "query": "from(bucket: \"k6\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"http_req_blocked\" and r._field == \"value\")\n  |> filter(fn: (r) => r.test_id == \"${test_id}\" and r.env == \"${env}\")\n  |> filter(fn: (r) => r.name == \"${request_name}\")\n  |> group(columns: [])\n  |> aggregateWindow(every: ${latency_window}, fn: max, createEmpty: false)"
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "blocked"
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "influx-k6"
+                      },
+                      "group": "influxdb",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "query": "from(bucket: \"k6\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"http_req_connecting\" and r._field == \"value\")\n  |> filter(fn: (r) => r.test_id == \"${test_id}\" and r.env == \"${env}\")\n  |> filter(fn: (r) => r.name == \"${request_name}\")\n  |> group(columns: [])\n  |> aggregateWindow(every: ${latency_window}, fn: max, createEmpty: false)"
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "connecting"
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "influx-k6"
+                      },
+                      "group": "influxdb",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "query": "from(bucket: \"k6\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"http_req_tls_handshaking\" and r._field == \"value\")\n  |> filter(fn: (r) => r.test_id == \"${test_id}\" and r.env == \"${env}\")\n  |> filter(fn: (r) => r.name == \"${request_name}\")\n  |> group(columns: [])\n  |> aggregateWindow(every: ${latency_window}, fn: max, createEmpty: false)"
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "tls"
+                  }
+                }
+              ],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "description": "Time spent before the request is sent. Not part of http_req_duration. With keep-alive most requests reuse a connection and these are 0, so the max per window is shown.",
+          "id": 10,
+          "links": [],
+          "title": "Connection setup - max per window (ms)",
+          "vizConfig": {
+            "group": "timeseries",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "line",
+                    "fillOpacity": 0,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 2,
+                    "pointSize": 3,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "showValues": false,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "displayName": "${__field.name}",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      }
+                    ]
+                  },
+                  "unit": "ms",
+                  "min": 0
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "blocked"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "blocked"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "#B877D9",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "connecting"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "connecting"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "#5794F2",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "tls"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "TLS handshaking"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "fixedColor": "#F2CC0C",
+                          "mode": "fixed"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "options": {
+                "legend": {
+                  "calcs": [
+                    "mean",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "none"
+                }
+              }
+            },
+            "version": "13.2.2"
+          }
+        }
+      },
+      "panel-12": {
+        "kind": "Panel",
+        "spec": {
+          "id": 12,
+          "title": "Error rate (%) vs RPS",
+          "description": "Share of failed requests (k6 http_req_failed) per time window, against this endpoint's requests per second. RPS is not in the legend, so it stays visible when you click Error rate.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "refId": "B",
+                    "query": {
+                      "datasource": {
+                        "name": "influx-k6"
+                      },
+                      "group": "influxdb",
+                      "kind": "DataQuery",
+                      "version": "v0",
+                      "spec": {
+                        "query": "windowSec = float(v: int(v: v.windowPeriod)) / 1000000000.0\n\nfrom(bucket: \"k6\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"http_reqs\" and r._field == \"value\")\n  |> filter(fn: (r) => r.test_id == \"${test_id}\" and r.env == \"${env}\")\n  |> filter(fn: (r) => r.name == \"${request_name}\")\n  |> group()\n  |> aggregateWindow(every: v.windowPeriod, fn: count, createEmpty: true)\n  |> map(fn: (r) => ({r with _value: float(v: r._value) / windowSec}))"
+                      }
+                    }
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "refId": "A",
+                    "query": {
+                      "datasource": {
+                        "name": "influx-k6"
+                      },
+                      "group": "influxdb",
+                      "kind": "DataQuery",
+                      "version": "v0",
+                      "spec": {
+                        "query": "// Error rate (%) per window; VUs come from query B on the right axis.\nfrom(bucket: \"k6\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"http_req_failed\" and r._field == \"value\")\n  |> filter(fn: (r) => r.test_id == \"${test_id}\" and r.env == \"${env}\")\n  |> filter(fn: (r) => r.name == \"${request_name}\")\n  |> group()\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> map(fn: (r) => ({r with _value: float(v: r._value) * 100.0}))"
+                      }
+                    }
+                  }
+                }
+              ],
+              "queryOptions": {
+                "interval": "1s"
+              },
+              "transformations": []
+            }
+          },
+          "vizConfig": {
+            "group": "timeseries",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "line",
+                    "fillOpacity": 0,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 2,
+                    "pointSize": 3,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "showValues": false,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "displayName": "${__field.name}",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      }
+                    ]
+                  },
+                  "unit": "percent",
+                  "min": 0
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "A"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "Error rate"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "#F2495C"
+                        }
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 20
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byFrameRefID",
+                      "options": "B"
+                    },
+                    "properties": [
+                      {
+                        "id": "displayName",
+                        "value": "RPS"
+                      },
+                      {
+                        "id": "unit",
+                        "value": "reqps"
+                      },
+                      {
+                        "id": "custom.axisPlacement",
+                        "value": "right"
+                      },
+                      {
+                        "id": "custom.axisLabel",
+                        "value": "RPS"
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "#8AB8FF"
+                        }
+                      },
+                      {
+                        "id": "min",
+                        "value": 0
+                      },
+                      {
+                        "id": "custom.hideFrom",
+                        "value": {
+                          "legend": true,
+                          "tooltip": false,
+                          "viz": false
+                        }
+                      },
+                      {
+                        "id": "custom.drawStyle",
+                        "value": "bars"
+                      },
+                      {
+                        "id": "custom.fillOpacity",
+                        "value": 25
+                      },
+                      {
+                        "id": "custom.lineWidth",
+                        "value": 0
+                      }
+                    ]
+                  }
+                ]
+              },
+              "options": {
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "multi",
+                  "sort": "none"
+                }
+              }
+            },
+            "version": "13.2.2"
+          }
+        }
+      },
+      "panel-13": {
+        "kind": "Panel",
+        "spec": {
+          "id": 13,
+          "title": "Failed requests/sec by status & error code",
+          "description": "Failed requests per second split by HTTP status and k6 error code. Status 0 means no HTTP response (timeout, DNS, TCP, TLS).",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "refId": "A",
+                    "query": {
+                      "datasource": {
+                        "name": "influx-k6"
+                      },
+                      "group": "influxdb",
+                      "kind": "DataQuery",
+                      "version": "v0",
+                      "spec": {
+                        "query": "// Failed requests per second, split by HTTP status and k6 error code.\nwindowSec = float(v: int(v: v.windowPeriod)) / 1000000000.0\n\nfrom(bucket: \"k6\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"http_req_failed\" and r._field == \"value\")\n  |> filter(fn: (r) => r.test_id == \"${test_id}\" and r.env == \"${env}\")\n  |> filter(fn: (r) => r.name == \"${request_name}\")\n  |> filter(fn: (r) => r._value > 0)\n  |> group()\n  |> map(fn: (r) => ({r with\n      status: if exists r.status then r.status else \"0\",\n      error_code: if exists r.error_code then r.error_code else \"n/a\"\n  }))\n  |> group(columns: [\"status\", \"error_code\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: count, createEmpty: true)\n  |> map(fn: (r) => ({r with _value: float(v: r._value) / windowSec}))"
+                      }
+                    }
+                  }
+                }
+              ],
+              "queryOptions": {
+                "interval": "1s"
+              },
+              "transformations": []
+            }
+          },
+          "vizConfig": {
+            "group": "timeseries",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "bars",
+                    "fillOpacity": 80,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "pointSize": 3,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "auto",
+                    "showValues": false,
+                    "spanNulls": false,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "normal"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "displayName": "${__field.labels.status} · ${__field.labels.error_code}",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      }
+                    ]
+                  },
+                  "unit": "reqps",
+                  "min": 0
+                },
+                "overrides": []
+              },
+              "options": {
+                "legend": {
+                  "calcs": [
+                    "mean",
+                    "max"
+                  ],
+                  "displayMode": "table",
+                  "placement": "right",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "hideZeros": true,
+                  "mode": "multi",
+                  "sort": "desc"
+                }
+              }
+            },
+            "version": "13.2.2"
+          }
+        }
+      },
+      "panel-14": {
+        "kind": "Panel",
+        "spec": {
+          "id": 14,
+          "title": "Errors breakdown",
+          "description": "Every request / HTTP status / k6 error code combination that failed: how many times, share of that request's calls, first and last occurrence.",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "refId": "A",
+                    "query": {
+                      "datasource": {
+                        "name": "influx-k6"
+                      },
+                      "group": "influxdb",
+                      "kind": "DataQuery",
+                      "version": "v0",
+                      "spec": {
+                        "query": "// Which errors happened, how many, on which request, and when.\ndescribe = (code, status) =>\n  if code == \"n/a\" then (if status == \"0\" then \"Network error\" else \"HTTP ${status}\")\n  else if code == \"1000\" then \"Generic error\"\n  else if code == \"1010\" then \"Non-TCP network error\"\n  else if code == \"1020\" then \"Invalid URL\"\n  else if code == \"1050\" then \"Request timeout\"\n  else if code == \"1100\" then \"DNS error\"\n  else if code == \"1101\" then \"DNS: no IP for host\"\n  else if code == \"1200\" then \"TCP error\"\n  else if code == \"1201\" then \"TCP: broken pipe\"\n  else if code == \"1210\" then \"TCP dial error\"\n  else if code == \"1211\" then \"TCP dial timeout\"\n  else if code == \"1212\" then \"Connection refused\"\n  else if code == \"1220\" then \"Connection reset by peer\"\n  else if code =~ /^13/ then \"TLS error\"\n  else if code =~ /^14/ then \"HTTP 4xx - client error\"\n  else if code =~ /^15/ then \"HTTP 5xx - server error\"\n  else if code =~ /^16/ then \"HTTP/2 error\"\n  else \"k6 error \" + code\n\nfailed = from(bucket: \"k6\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"http_req_failed\" and r._field == \"value\")\n  |> filter(fn: (r) => r.test_id == \"${test_id}\" and r.env == \"${env}\")\n  |> filter(fn: (r) => r.name == \"${request_name}\")\n  |> filter(fn: (r) => r._value > 0)\n  |> group()\n  |> map(fn: (r) => ({r with\n      status: if exists r.status then r.status else \"0\",\n      error_code: if exists r.error_code then r.error_code else \"n/a\"\n  }))\n  |> group(columns: [\"name\", \"method\", \"status\", \"error_code\"])\n\ntotals = from(bucket: \"k6\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"http_reqs\" and r._field == \"value\")\n  |> filter(fn: (r) => r.test_id == \"${test_id}\" and r.env == \"${env}\")\n  |> filter(fn: (r) => r.name == \"${request_name}\")\n  |> group(columns: [\"name\", \"method\"])\n  |> sum()\n  |> map(fn: (r) => ({name: r.name, method: r.method, requests: float(v: r._value)}))\n  |> group()\n\nerrors = failed |> count() |> map(fn: (r) => ({r with _value: float(v: r._value)})) |> set(key: \"_field\", value: \"errors\")\nfirstSeen = failed |> first() |> map(fn: (r) => ({r with _value: float(v: int(v: r._time) / 1000000)})) |> set(key: \"_field\", value: \"first_seen\")\nlastSeen = failed |> last() |> map(fn: (r) => ({r with _value: float(v: int(v: r._time) / 1000000)})) |> set(key: \"_field\", value: \"last_seen\")\n\nstats = union(tables: [errors, firstSeen, lastSeen])\n  |> keep(columns: [\"name\", \"method\", \"status\", \"error_code\", \"_field\", \"_value\"])\n  |> group()\n  |> pivot(rowKey: [\"name\", \"method\", \"status\", \"error_code\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n\njoin(tables: {s: stats, t: totals}, on: [\"name\", \"method\"])\n  |> map(fn: (r) => ({\n      \"Request\": \"[\" + r.method + \"] \" + r.name,\n      \"Status\": r.status,\n      \"Error code\": r.error_code,\n      \"Error\": describe(code: r.error_code, status: r.status),\n      \"Count\": r.errors,\n      \"% of request calls\": if r.requests > 0.0 then r.errors / r.requests * 100.0 else 0.0,\n      \"First seen\": r.first_seen,\n      \"Last seen\": r.last_seen\n  }))\n  |> sort(columns: [\"Count\"], desc: true)"
+                      }
+                    }
+                  }
+                }
+              ],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "vizConfig": {
+            "group": "table",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "custom": {
+                    "align": "auto",
+                    "cellOptions": {
+                      "type": "auto"
+                    },
+                    "footer": {
+                      "reducers": []
+                    },
+                    "inspect": false
+                  },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      }
+                    ]
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Request"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 380
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Status"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 80
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Error code"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 100
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Count"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 90
+                      },
+                      {
+                        "id": "decimals",
+                        "value": 0
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "#E65B55"
+                        }
+                      },
+                      {
+                        "id": "custom.cellOptions",
+                        "value": {
+                          "type": "color-background"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "% of request calls"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 220
+                      },
+                      {
+                        "id": "unit",
+                        "value": "percent"
+                      },
+                      {
+                        "id": "decimals",
+                        "value": 1
+                      },
+                      {
+                        "id": "min",
+                        "value": 0
+                      },
+                      {
+                        "id": "max",
+                        "value": 100
+                      },
+                      {
+                        "id": "thresholds",
+                        "value": {
+                          "mode": "absolute",
+                          "steps": [
+                            {
+                              "color": "green",
+                              "value": 0
+                            },
+                            {
+                              "color": "orange",
+                              "value": 1
+                            },
+                            {
+                              "color": "red",
+                              "value": 5
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "thresholds"
+                        }
+                      },
+                      {
+                        "id": "custom.cellOptions",
+                        "value": {
+                          "type": "gauge",
+                          "mode": "basic",
+                          "valueDisplayMode": "text"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "First seen"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "dateTimeAsIso"
+                      },
+                      {
+                        "id": "custom.width",
+                        "value": 190
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Last seen"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "dateTimeAsIso"
+                      },
+                      {
+                        "id": "custom.width",
+                        "value": 190
+                      }
+                    ]
+                  }
+                ]
+              },
+              "options": {
+                "cellHeight": "sm",
+                "footer": {
+                  "show": false
+                },
+                "showHeader": true,
+                "sortBy": [
+                  {
+                    "desc": true,
+                    "displayName": "Count"
+                  }
+                ]
+              }
+            },
+            "version": "13.2.2"
+          }
+        }
+      },
+      "panel-15": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "influx-k6"
+                      },
+                      "group": "influxdb",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "query": "import \"strings\"\n\n// Per-request statistics for the selected run.\nbase = from(bucket: \"k6\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r.test_id == \"${test_id}\" and r.env == \"${env}\")\n  |> filter(fn: (r) => r.name == \"${request_name}\")\n  |> filter(fn: (r) => r._measurement == \"http_req_duration\" and r._field == \"value\")\n  |> group(columns: [\"name\", \"method\"])\n\nfailures = from(bucket: \"k6\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r.test_id == \"${test_id}\" and r.env == \"${env}\")\n  |> filter(fn: (r) => r.name == \"${request_name}\")\n  |> filter(fn: (r) => r._measurement == \"http_req_failed\" and r._field == \"value\")\n  |> group(columns: [\"name\", \"method\"])\n\n// Two-digit prefixes set the column order (pivot keeps the order it meets columns in); they are stripped at the end.\npct = (q, label) => base |> quantile(q: q, column: \"_value\", method: \"estimate_tdigest\") |> set(key: \"_field\", value: label)\n\ntotal = base |> count(column: \"_value\") |> set(key: \"_field\", value: \"01 Total\") |> map(fn: (r) => ({r with _value: float(v: r._value)}))\n// Summing failure values preserves a zero-valued KO column for successful requests.\nko = failures |> sum(column: \"_value\") |> set(key: \"_field\", value: \"02 KO\")\npctKo = failures |> mean(column: \"_value\") |> map(fn: (r) => ({r with _value: r._value * 100.0})) |> set(key: \"_field\", value: \"03 % KO\")\nminimum = base |> min(column: \"_value\") |> set(key: \"_field\", value: \"05 min\")\nmaximum = base |> max(column: \"_value\") |> set(key: \"_field\", value: \"10 max\")\n\n// Throughput is based on the observed time span of each request series.\nfirstTimes = base |> first() |> keep(columns: [\"name\", \"method\", \"_time\"]) |> rename(columns: {_time: \"first_time\"})\nlastTimes = base |> last() |> keep(columns: [\"name\", \"method\", \"_time\"]) |> rename(columns: {_time: \"last_time\"})\nspans = join(tables: {first: firstTimes, last: lastTimes}, on: [\"name\", \"method\"])\ncounts = base |> count(column: \"_value\") |> keep(columns: [\"name\", \"method\", \"_value\"])\nrps = join(tables: {span: spans, counts: counts}, on: [\"name\", \"method\"])\n  |> map(fn: (r) => ({r with _value: if int(v: r.last_time) > int(v: r.first_time) then float(v: r._value) * 1000000000.0 / float(v: int(v: r.last_time) - int(v: r.first_time)) else 0.0}))\n  |> set(key: \"_field\", value: \"04 RPS\")\n\nunion(tables: [total, rps, ko, pctKo, minimum, pct(q: 0.50, label: \"06 p50\"), pct(q: 0.90, label: \"07 p90\"), pct(q: 0.95, label: \"08 p95\"), pct(q: 0.99, label: \"09 p99\"), maximum])\n  |> keep(columns: [\"name\", \"method\", \"_field\", \"_value\"])\n  |> group()\n  |> sort(columns: [\"_field\"])\n  |> pivot(rowKey: [\"name\", \"method\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> drop(columns: [\"method\"])\n  |> rename(fn: (column) => if column == \"name\" then \"Name\" else if column =~ /^[0-9]{2} / then strings.substring(v: column, start: 3, end: strings.strlen(v: column)) else column)\n  // Busiest endpoints first.\n  |> sort(columns: [\"Total\", \"Name\"], desc: true)"
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "A"
+                  }
+                }
+              ],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "description": "All statistics of this endpoint for the selected run: total, failures (k6 http_req_failed), requests per second and response-time percentiles. Same columns as on the run overview.",
+          "id": 15,
+          "links": [],
+          "title": "Request Statistics",
+          "vizConfig": {
+            "group": "table",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "custom": {
+                    "align": "auto",
+                    "cellOptions": {
+                      "type": "auto"
+                    },
+                    "footer": {
+                      "reducers": []
+                    },
+                    "inspect": false
+                  },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Name"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.minWidth",
+                        "value": 160
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Total"
+                    },
+                    "properties": [
+                      {
+                        "id": "decimals",
+                        "value": 0
+                      },
+                      {
+                        "id": "custom.width",
+                        "value": 80
+                      },
+                      {
+                        "id": "custom.cellOptions",
+                        "value": {
+                          "type": "color-background",
+                          "mode": "basic"
+                        }
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "yellow"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "RPS"
+                    },
+                    "properties": [
+                      {
+                        "id": "decimals",
+                        "value": 2
+                      },
+                      {
+                        "id": "custom.width",
+                        "value": 72
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "KO"
+                    },
+                    "properties": [
+                      {
+                        "id": "decimals",
+                        "value": 0
+                      },
+                      {
+                        "id": "custom.width",
+                        "value": 60
+                      },
+                      {
+                        "id": "custom.cellOptions",
+                        "value": {
+                          "type": "color-background",
+                          "mode": "basic"
+                        }
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "red"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "% KO"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "percent"
+                      },
+                      {
+                        "id": "decimals",
+                        "value": 1
+                      },
+                      {
+                        "id": "custom.width",
+                        "value": 72
+                      },
+                      {
+                        "id": "custom.cellOptions",
+                        "value": {
+                          "type": "color-background",
+                          "mode": "basic"
+                        }
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "fixed",
+                          "fixedColor": "red"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "min"
+                    },
+                    "properties": [
+                      {
+                        "id": "decimals",
+                        "value": 0
+                      },
+                      {
+                        "id": "displayName",
+                        "value": "min, ms"
+                      },
+                      {
+                        "id": "custom.width",
+                        "value": 78
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "p50"
+                    },
+                    "properties": [
+                      {
+                        "id": "decimals",
+                        "value": 0
+                      },
+                      {
+                        "id": "displayName",
+                        "value": "p50, ms"
+                      },
+                      {
+                        "id": "custom.width",
+                        "value": 78
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "p90"
+                    },
+                    "properties": [
+                      {
+                        "id": "decimals",
+                        "value": 0
+                      },
+                      {
+                        "id": "displayName",
+                        "value": "p90, ms"
+                      },
+                      {
+                        "id": "custom.width",
+                        "value": 78
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "p95"
+                    },
+                    "properties": [
+                      {
+                        "id": "decimals",
+                        "value": 0
+                      },
+                      {
+                        "id": "displayName",
+                        "value": "p95, ms"
+                      },
+                      {
+                        "id": "custom.width",
+                        "value": 78
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "p99"
+                    },
+                    "properties": [
+                      {
+                        "id": "decimals",
+                        "value": 0
+                      },
+                      {
+                        "id": "displayName",
+                        "value": "p99, ms"
+                      },
+                      {
+                        "id": "custom.width",
+                        "value": 78
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "max"
+                    },
+                    "properties": [
+                      {
+                        "id": "decimals",
+                        "value": 0
+                      },
+                      {
+                        "id": "displayName",
+                        "value": "max, ms"
+                      },
+                      {
+                        "id": "custom.width",
+                        "value": 80
+                      }
+                    ]
+                  }
+                ]
+              },
+              "options": {
+                "cellHeight": "sm",
+                "footer": {
+                  "show": false
+                },
+                "showHeader": true
+              }
+            },
+            "version": "13.2.2"
+          }
+        }
+      }
+    },
+    "layout": {
+      "kind": "RowsLayout",
+      "spec": {
+        "rows": [
+          {
+            "kind": "RowsLayoutRow",
+            "spec": {
+              "title": "Endpoint overview",
+              "collapse": false,
+              "layout": {
+                "kind": "GridLayout",
+                "spec": {
+                  "items": [
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-1"
+                        },
+                        "x": 0,
+                        "y": 0,
+                        "width": 4,
+                        "height": 4
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-2"
+                        },
+                        "x": 4,
+                        "y": 0,
+                        "width": 4,
+                        "height": 4
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-3"
+                        },
+                        "x": 8,
+                        "y": 0,
+                        "width": 4,
+                        "height": 4
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-4"
+                        },
+                        "x": 12,
+                        "y": 0,
+                        "width": 4,
+                        "height": 4
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-5"
+                        },
+                        "x": 16,
+                        "y": 0,
+                        "width": 4,
+                        "height": 4
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-6"
+                        },
+                        "x": 20,
+                        "y": 0,
+                        "width": 4,
+                        "height": 4
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-15"
+                        },
+                        "x": 0,
+                        "y": 4,
+                        "width": 24,
+                        "height": 4
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "kind": "RowsLayoutRow",
+            "spec": {
+              "title": "Response time",
+              "collapse": false,
+              "layout": {
+                "kind": "GridLayout",
+                "spec": {
+                  "items": [
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-7"
+                        },
+                        "x": 0,
+                        "y": 0,
+                        "width": 24,
+                        "height": 9
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-8"
+                        },
+                        "x": 0,
+                        "y": 9,
+                        "width": 24,
+                        "height": 8
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "kind": "RowsLayoutRow",
+            "spec": {
+              "title": "Where time is spent",
+              "collapse": false,
+              "layout": {
+                "kind": "GridLayout",
+                "spec": {
+                  "items": [
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-9"
+                        },
+                        "x": 0,
+                        "y": 0,
+                        "width": 12,
+                        "height": 8
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-10"
+                        },
+                        "x": 12,
+                        "y": 0,
+                        "width": 12,
+                        "height": 8
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "kind": "RowsLayoutRow",
+            "spec": {
+              "title": "Errors",
+              "collapse": false,
+              "layout": {
+                "kind": "GridLayout",
+                "spec": {
+                  "items": [
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-12"
+                        },
+                        "x": 0,
+                        "y": 0,
+                        "width": 12,
+                        "height": 8
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-13"
+                        },
+                        "x": 12,
+                        "y": 0,
+                        "width": 12,
+                        "height": 8
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-14"
+                        },
+                        "x": 0,
+                        "y": 8,
+                        "width": 24,
+                        "height": 8
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "links": [
+      {
+        "title": "Run overview",
+        "type": "link",
+        "icon": "dashboard",
+        "tooltip": "Back to the whole run",
+        "url": "/d/k6-run-overview?var-env=${env:percentencode}&var-test_name=${test_name:percentencode}&var-test_id=${test_id:percentencode}",
+        "asDropdown": false,
+        "targetBlank": false,
+        "includeVars": false,
+        "keepTime": true,
+        "tags": []
+      }
+    ],
+    "liveNow": false,
+    "preload": false,
+    "tags": [
+      "k6",
+      "influxdb",
+      "flux",
+      "endpoint"
+    ],
+    "timeSettings": {
+      "autoRefresh": "",
+      "autoRefreshIntervals": [
+        "5s",
+        "10s",
+        "30s",
+        "1m",
+        "5m",
+        "15m",
+        "30m",
+        "1h",
+        "2h",
+        "1d"
+      ],
+      "fiscalYearStartMonth": 0,
+      "from": "now-1h",
+      "hideTimepicker": false,
+      "timezone": "browser",
+      "to": "now"
+    },
+    "title": "k6 · Endpoint details",
+    "variables": [
+      {
+        "kind": "QueryVariable",
+        "spec": {
+          "allowCustomValue": true,
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "hide": "dontHide",
+          "includeAll": false,
+          "label": "Env",
+          "multi": false,
+          "name": "env",
+          "options": [],
+          "query": {
+            "datasource": {
+              "name": "influx-k6"
+            },
+            "group": "influxdb",
+            "kind": "DataQuery",
+            "spec": {
+              "query": "import \"influxdata/influxdb/schema\"\nschema.tagValues(bucket: \"k6\", tag: \"env\", predicate: (r) => true, start: -90d)",
+              "refId": "VariableQuery"
+            },
+            "version": "v0"
+          },
+          "refresh": "onDashboardLoad",
+          "regex": "",
+          "regexApplyTo": "value",
+          "skipUrlSync": false,
+          "sort": "alphabeticalAsc"
+        }
+      },
+      {
+        "kind": "QueryVariable",
+        "spec": {
+          "allowCustomValue": true,
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "hide": "dontHide",
+          "includeAll": false,
+          "label": "Test Name",
+          "multi": false,
+          "name": "test_name",
+          "options": [],
+          "query": {
+            "datasource": {
+              "name": "influx-k6"
+            },
+            "group": "influxdb",
+            "kind": "DataQuery",
+            "spec": {
+              "query": "import \"influxdata/influxdb/schema\"\nschema.tagValues(bucket: \"k6\", tag: \"test_name\", predicate: (r) => r.env == \"${env}\", start: -90d)",
+              "refId": "VariableQuery"
+            },
+            "version": "v0"
+          },
+          "refresh": "onDashboardLoad",
+          "regex": "",
+          "regexApplyTo": "value",
+          "skipUrlSync": false,
+          "sort": "alphabeticalAsc"
+        }
+      },
+      {
+        "kind": "QueryVariable",
+        "spec": {
+          "allowCustomValue": true,
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "hide": "dontHide",
+          "includeAll": false,
+          "label": "Run",
+          "multi": false,
+          "name": "test_id",
+          "options": [],
+          "query": {
+            "datasource": {
+              "name": "influx-k6"
+            },
+            "group": "influxdb",
+            "kind": "DataQuery",
+            "spec": {
+              "query": "import \"influxdata/influxdb/schema\"\nschema.tagValues(bucket: \"k6\", tag: \"test_id\", predicate: (r) => r.test_name == \"${test_name}\" and r.env == \"${env}\", start: -90d)",
+              "refId": "VariableQuery"
+            },
+            "version": "v0"
+          },
+          "refresh": "onDashboardLoad",
+          "regex": "",
+          "regexApplyTo": "value",
+          "skipUrlSync": false,
+          "sort": "alphabeticalDesc"
+        }
+      },
+      {
+        "kind": "QueryVariable",
+        "spec": {
+          "allowCustomValue": true,
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "hide": "dontHide",
+          "includeAll": false,
+          "label": "Endpoint",
+          "multi": false,
+          "name": "request_name",
+          "options": [],
+          "query": {
+            "datasource": {
+              "name": "influx-k6"
+            },
+            "group": "influxdb",
+            "kind": "DataQuery",
+            "spec": {
+              "query": "import \"influxdata/influxdb/schema\"\nschema.tagValues(bucket: \"k6\", tag: \"name\", predicate: (r) => r.test_id == \"${test_id}\" and r.env == \"${env}\", start: -90d)",
+              "refId": "VariableQuery"
+            },
+            "version": "v0"
+          },
+          "refresh": "onTimeRangeChanged",
+          "regex": "",
+          "regexApplyTo": "value",
+          "skipUrlSync": false,
+          "sort": "alphabeticalAsc"
+        }
+      },
+      {
+        "kind": "IntervalVariable",
+        "spec": {
+          "name": "latency_window",
+          "label": "Latency window",
+          "description": "Aggregation window for percentile panels. auto = time range / 200, but not less than 10s.",
+          "query": "1s,5s,10s,30s,1m",
+          "current": {
+            "text": "auto",
+            "value": "$__auto"
+          },
+          "options": [
+            {
+              "text": "1s",
+              "value": "1s",
+              "selected": false
+            },
+            {
+              "text": "5s",
+              "value": "5s",
+              "selected": false
+            },
+            {
+              "text": "10s",
+              "value": "10s",
+              "selected": false
+            },
+            {
+              "text": "30s",
+              "value": "30s",
+              "selected": false
+            },
+            {
+              "text": "1m",
+              "value": "1m",
+              "selected": false
+            }
+          ],
+          "auto": true,
+          "auto_min": "10s",
+          "auto_count": 200,
+          "refresh": "onTimeRangeChanged",
+          "hide": "dontHide",
+          "skipUrlSync": false
+        }
+      },
+      {
+        "kind": "CustomVariable",
+        "spec": {
+          "name": "histogram_buckets",
+          "label": "Histogram buckets",
+          "description": "Number of equal buckets between min and p99 in Response time distribution.",
+          "query": "10,20,30,50,100",
+          "current": {
+            "text": "30",
+            "value": "30"
+          },
+          "options": [
+            {
+              "text": "10",
+              "value": "10",
+              "selected": false
+            },
+            {
+              "text": "20",
+              "value": "20",
+              "selected": false
+            },
+            {
+              "text": "30",
+              "value": "30",
+              "selected": true
+            },
+            {
+              "text": "50",
+              "value": "50",
+              "selected": false
+            },
+            {
+              "text": "100",
+              "value": "100",
+              "selected": false
+            }
+          ],
+          "multi": false,
+          "includeAll": false,
+          "allowCustomValue": true,
+          "hide": "dontHide",
+          "skipUrlSync": false
+        }
+      }
+    ]
+  }
+}

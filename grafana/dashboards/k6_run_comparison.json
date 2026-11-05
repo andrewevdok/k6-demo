@@ -1,0 +1,2788 @@
+{
+  "uid": "k6-run-comparison",
+  "title": "k6 · Run comparison",
+  "tags": [
+    "k6",
+    "influxdb",
+    "flux",
+    "comparison"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "refresh": "",
+  "graphTooltip": 1,
+  "time": {
+    "from": "now-180d",
+    "to": "now"
+  },
+  "timepicker": {
+    "hidden": true
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "env",
+        "label": "Env",
+        "type": "query",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "influx-k6"
+        },
+        "query": "import \"influxdata/influxdb/schema\"\nschema.tagValues(bucket: \"k6_summaries\", tag: \"env\", predicate: (r) => r._measurement == \"test_summary\", start: -180d)",
+        "refresh": 1,
+        "sort": 1,
+        "multi": false,
+        "includeAll": false,
+        "current": {}
+      },
+      {
+        "name": "test_name",
+        "label": "Test",
+        "type": "query",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "influx-k6"
+        },
+        "query": "import \"influxdata/influxdb/schema\"\nschema.tagValues(bucket: \"k6_summaries\", tag: \"test_name\", predicate: (r) => r._measurement == \"test_summary\" and r.env == \"${env}\", start: -180d)",
+        "refresh": 2,
+        "sort": 1,
+        "multi": false,
+        "includeAll": false,
+        "current": {}
+      },
+      {
+        "name": "left",
+        "label": "Left run",
+        "type": "query",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "influx-k6"
+        },
+        "query": "all = from(bucket: \"k6_summaries\")\n  |> range(start: -180d)\n  |> filter(fn: (r) => r._measurement == \"test_summary\" and r.test_name == \"${test_name}\" and r._field == \"requests\")\n  |> filter(fn: (r) => r.env == \"${env}\")\n  |> rename(columns: {test_id: \"testid\"})\n  |> group()\n  |> sort(columns: [\"_time\"], desc: true)\n  |> map(fn: (r) => ({_time: r._time, _value: r.testid}))\n\na = all |> limit(n: 1, offset: 1)\nb = all |> limit(n: 1)\nc = all |> limit(n: 100000, offset: 2)\nunion(tables: [a, b, c]) |> keep(columns: [\"_value\"])",
+        "refresh": 2,
+        "sort": 0,
+        "multi": false,
+        "includeAll": false,
+        "current": {}
+      },
+      {
+        "name": "right",
+        "label": "Right run",
+        "type": "query",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "influx-k6"
+        },
+        "query": "all = from(bucket: \"k6_summaries\")\n  |> range(start: -180d)\n  |> filter(fn: (r) => r._measurement == \"test_summary\" and r.test_name == \"${test_name}\" and r._field == \"requests\")\n  |> filter(fn: (r) => r.env == \"${env}\")\n  |> rename(columns: {test_id: \"testid\"})\n  |> group()\n  |> sort(columns: [\"_time\"], desc: true)\n  |> map(fn: (r) => ({_time: r._time, _value: r.testid}))\n\nall |> keep(columns: [\"_value\"])",
+        "refresh": 2,
+        "sort": 0,
+        "multi": false,
+        "includeAll": false,
+        "current": {}
+      },
+      {
+        "name": "lat_pct",
+        "label": "Latency percentiles",
+        "type": "custom",
+        "hide": 2,
+        "query": "p90,p95,p99",
+        "multi": true,
+        "includeAll": true,
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "options": [
+          {
+            "text": "All",
+            "value": "$__all",
+            "selected": true
+          },
+          {
+            "text": "p90",
+            "value": "p90",
+            "selected": false
+          },
+          {
+            "text": "p95",
+            "value": "p95",
+            "selected": false
+          },
+          {
+            "text": "p99",
+            "value": "p99",
+            "selected": false
+          }
+        ]
+      }
+    ]
+  },
+  "annotations": {
+    "list": []
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "Recent runs",
+      "id": 29,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "panels": []
+    },
+    {
+      "type": "table",
+      "title": "Last 20 runs: pick Left and Right",
+      "description": "Click Set as Left or Set as Right to compare that run; the other side stays as it is. Compared marks the runs in the current comparison. Click a run id to open it on the run dashboard.",
+      "id": 30,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-k6"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 1
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-k6"
+          },
+          "refId": "A",
+          "query": "from(bucket: \"k6_summaries\")\n  |> range(start: -180d)\n  |> filter(fn: (r) => r._measurement == \"test_summary\" and r.test_name == \"${test_name}\")\n  |> filter(fn: (r) => r.env == \"${env}\")\n  |> rename(columns: {test_id: \"testid\"})\n  |> filter(fn: (r) => r._field =~ /^(testid|requests|failed|duration_ms|avg|min|max|p90|p95|p99|rps|error_rate)$/)\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> group()\n  |> keep(columns: [\"_time\", \"testid\", \"duration_ms\", \"requests\", \"failed\", \"avg\", \"p95\", \"p99\", \"rps\", \"error_rate\"])\n  |> map(fn: (r) => ({r with from_ms: int(v: r._time) / 1000000 - 5000, to_ms: int(v: r._time) / 1000000 + int(v: r.duration_ms) + 5000}))\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 20)\n  |> map(fn: (r) => ({r with\n      compared: if r.testid == \"${left}\" then \"Left\" else if r.testid == \"${right}\" then \"Right\" else \"\",\n      set_left: \"Set as Left\", set_right: \"Set as Right\"}))"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "_time"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsIso"
+              },
+              {
+                "id": "displayName",
+                "value": "Start"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "duration_ms"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "displayName",
+                "value": "Duration"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "requests"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "failed"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "avg"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p95"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p99"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "rps"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "reqps"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "error_rate"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "testid"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Run"
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open run",
+                    "targetBlank": false,
+                    "url": "/d/k6-run-overview?var-env=${env:percentencode}&var-test_name=${test_name:percentencode}&var-test_id=${__data.fields.testid:percentencode}&from=${__data.fields.from_ms}&to=${__data.fields.to_ms}"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "from_ms"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom.viz",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "to_ms"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom.viz",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "set_left"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Set as Left",
+                    "url": "/d/k6-run-comparison?var-env=${env:percentencode}&var-test_name=${test_name:percentencode}&var-left=${__data.fields.testid:percentencode}&var-right=${right:percentencode}&${__url_time_range}",
+                    "targetBlank": false
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "data-links"
+                }
+              },
+              {
+                "id": "displayName",
+                "value": ""
+              },
+              {
+                "id": "custom.width",
+                "value": 120
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "set_right"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Set as Right",
+                    "url": "/d/k6-run-comparison?var-env=${env:percentencode}&var-test_name=${test_name:percentencode}&var-right=${__data.fields.testid:percentencode}&var-left=${left:percentencode}&${__url_time_range}",
+                    "targetBlank": false
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "data-links"
+                }
+              },
+              {
+                "id": "displayName",
+                "value": ""
+              },
+              {
+                "id": "custom.width",
+                "value": 120
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "compared"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Compared"
+              },
+              {
+                "id": "custom.width",
+                "value": 100
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "Left": {
+                        "color": "#5794F2",
+                        "index": 0
+                      },
+                      "Right": {
+                        "color": "#B877D9",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "table": true,
+              "result": true,
+              "_start": true,
+              "_stop": true,
+              "_measurement": true,
+              "test_name": true
+            },
+            "indexByName": {
+              "compared": 0,
+              "_time": 1,
+              "testid": 2,
+              "set_left": 3,
+              "set_right": 4,
+              "duration_ms": 5,
+              "requests": 6,
+              "failed": 7,
+              "avg": 8,
+              "p95": 9,
+              "p99": 10,
+              "rps": 11,
+              "error_rate": 12
+            },
+            "renameByName": {}
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "Start",
+            "desc": true
+          }
+        ]
+      }
+    },
+    {
+      "type": "row",
+      "title": "Endpoint coverage",
+      "id": 10,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 10
+      },
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "Endpoints in both runs",
+      "id": 11,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-k6"
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 8,
+        "x": 0,
+        "y": 11
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-k6"
+          },
+          "refId": "A",
+          "query": "data = from(bucket: \"k6_summaries\")\n  |> range(start: -180d)\n  |> filter(fn: (r) => r._measurement == \"endpoint_summary\" and r.test_name == \"${test_name}\" and r._field == \"requests\")\n  |> filter(fn: (r) => r.env == \"${env}\")\n  |> rename(columns: {test_id: \"testid\", request_name: \"endpoint\"})\n  |> keep(columns: [\"endpoint\", \"testid\"])\n\nlt = data |> filter(fn: (r) => r.testid == \"${left}\")\n  |> group(columns: [\"endpoint\"]) |> limit(n: 1)\n  |> map(fn: (r) => ({endpoint: r.endpoint, side: 1}))\nrt = data |> filter(fn: (r) => r.testid == \"${right}\")\n  |> group(columns: [\"endpoint\"]) |> limit(n: 1)\n  |> map(fn: (r) => ({endpoint: r.endpoint, side: 2}))\n\npresence = union(tables: [lt, rt])\n  |> group(columns: [\"endpoint\"])\n  |> sum(column: \"side\")\n  |> group()\n  |> map(fn: (r) => ({endpoint: r.endpoint, presence: if r.side == 3 then \"Both\" else if r.side == 1 then \"Only in Left\" else \"Only in Right\"}))\n\npresence |> filter(fn: (r) => r.presence == \"Both\") |> group() |> count(column: \"endpoint\")"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "0",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value",
+        "graphMode": "none",
+        "colorMode": "none",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Only in Left",
+      "id": 12,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-k6"
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 8,
+        "x": 8,
+        "y": 11
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-k6"
+          },
+          "refId": "A",
+          "query": "data = from(bucket: \"k6_summaries\")\n  |> range(start: -180d)\n  |> filter(fn: (r) => r._measurement == \"endpoint_summary\" and r.test_name == \"${test_name}\" and r._field == \"requests\")\n  |> filter(fn: (r) => r.env == \"${env}\")\n  |> rename(columns: {test_id: \"testid\", request_name: \"endpoint\"})\n  |> keep(columns: [\"endpoint\", \"testid\"])\n\nlt = data |> filter(fn: (r) => r.testid == \"${left}\")\n  |> group(columns: [\"endpoint\"]) |> limit(n: 1)\n  |> map(fn: (r) => ({endpoint: r.endpoint, side: 1}))\nrt = data |> filter(fn: (r) => r.testid == \"${right}\")\n  |> group(columns: [\"endpoint\"]) |> limit(n: 1)\n  |> map(fn: (r) => ({endpoint: r.endpoint, side: 2}))\n\npresence = union(tables: [lt, rt])\n  |> group(columns: [\"endpoint\"])\n  |> sum(column: \"side\")\n  |> group()\n  |> map(fn: (r) => ({endpoint: r.endpoint, presence: if r.side == 3 then \"Both\" else if r.side == 1 then \"Only in Left\" else \"Only in Right\"}))\n\npresence |> filter(fn: (r) => r.presence == \"Only in Left\") |> group() |> count(column: \"endpoint\")"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "0",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value",
+        "graphMode": "none",
+        "colorMode": "none",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Only in Right",
+      "id": 13,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-k6"
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 8,
+        "x": 16,
+        "y": 11
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-k6"
+          },
+          "refId": "A",
+          "query": "data = from(bucket: \"k6_summaries\")\n  |> range(start: -180d)\n  |> filter(fn: (r) => r._measurement == \"endpoint_summary\" and r.test_name == \"${test_name}\" and r._field == \"requests\")\n  |> filter(fn: (r) => r.env == \"${env}\")\n  |> rename(columns: {test_id: \"testid\", request_name: \"endpoint\"})\n  |> keep(columns: [\"endpoint\", \"testid\"])\n\nlt = data |> filter(fn: (r) => r.testid == \"${left}\")\n  |> group(columns: [\"endpoint\"]) |> limit(n: 1)\n  |> map(fn: (r) => ({endpoint: r.endpoint, side: 1}))\nrt = data |> filter(fn: (r) => r.testid == \"${right}\")\n  |> group(columns: [\"endpoint\"]) |> limit(n: 1)\n  |> map(fn: (r) => ({endpoint: r.endpoint, side: 2}))\n\npresence = union(tables: [lt, rt])\n  |> group(columns: [\"endpoint\"])\n  |> sum(column: \"side\")\n  |> group()\n  |> map(fn: (r) => ({endpoint: r.endpoint, presence: if r.side == 3 then \"Both\" else if r.side == 1 then \"Only in Left\" else \"Only in Right\"}))\n\npresence |> filter(fn: (r) => r.presence == \"Only in Right\") |> group() |> count(column: \"endpoint\")"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "0",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value",
+        "graphMode": "none",
+        "colorMode": "none",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "type": "row",
+      "title": "Details: whole test",
+      "id": 20,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "panels": []
+    },
+    {
+      "type": "table",
+      "title": "Latency (ms)",
+      "description": "Δ = Right − Left.",
+      "id": 21,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-k6"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 15
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-k6"
+          },
+          "refId": "A",
+          "query": "import \"math\"\nimport \"array\"\n\ndata = from(bucket: \"k6_summaries\")\n  |> range(start: -180d)\n  |> filter(fn: (r) => r._measurement == \"test_summary\" and r.test_name == \"${test_name}\")\n  |> filter(fn: (r) => r.env == \"${env}\")\n  |> rename(columns: {test_id: \"testid\"})\n  |> filter(fn: (r) => r._field =~ /^(testid|requests|failed|duration_ms|avg|min|max|p90|p95|p99|rps|error_rate)$/)\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> group()\n\nlrec = data |> filter(fn: (r) => r.testid == \"${left}\") |> findRecord(fn: (key) => true, idx: 0)\nrrec = data |> filter(fn: (r) => r.testid == \"${right}\") |> findRecord(fn: (key) => true, idx: 0)\n\narray.from(rows: [\n  {metric: \"min\", left: lrec.min, right: rrec.min},\n  {metric: \"avg\", left: lrec.avg, right: rrec.avg},\n  {metric: \"p90\", left: lrec.p90, right: rrec.p90},\n  {metric: \"p95\", left: lrec.p95, right: rrec.p95},\n  {metric: \"p99\", left: lrec.p99, right: rrec.p99},\n  {metric: \"max\", left: lrec.max, right: rrec.max}\n])\n  |> map(fn: (r) => ({r with left: math.round(x: r.left), right: math.round(x: r.right)}))\n  |> map(fn: (r) => ({r with delta: r.right - r.left, delta_pct: if r.left > 0.0 then (r.right - r.left) / r.left * 100.0 else 0.0}))"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "metric"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Metric"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "left"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "displayName",
+                "value": "Left"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "right"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "displayName",
+                "value": "Right"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "delta"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "displayName",
+                "value": "Δ"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "text",
+                      "value": -0.5
+                    },
+                    {
+                      "color": "red",
+                      "value": 0.5
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "delta_pct"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "displayName",
+                "value": "Δ %"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "text",
+                      "value": -0.05
+                    },
+                    {
+                      "color": "red",
+                      "value": 0.05
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "table": true,
+              "result": true,
+              "_start": true,
+              "_stop": true,
+              "_measurement": true,
+              "test_name": true
+            },
+            "indexByName": {
+              "metric": 0,
+              "left": 1,
+              "right": 2,
+              "delta": 3,
+              "delta_pct": 4
+            },
+            "renameByName": {}
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      }
+    },
+    {
+      "type": "table",
+      "title": "Volume, errors and throughput",
+      "description": "Δ = Right − Left.",
+      "id": 22,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-k6"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 15
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-k6"
+          },
+          "refId": "A",
+          "query": "import \"math\"\nimport \"array\"\n\ndata = from(bucket: \"k6_summaries\")\n  |> range(start: -180d)\n  |> filter(fn: (r) => r._measurement == \"test_summary\" and r.test_name == \"${test_name}\")\n  |> filter(fn: (r) => r.env == \"${env}\")\n  |> rename(columns: {test_id: \"testid\"})\n  |> filter(fn: (r) => r._field =~ /^(testid|requests|failed|duration_ms|avg|min|max|p90|p95|p99|rps|error_rate)$/)\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> group()\n\nlrec = data |> filter(fn: (r) => r.testid == \"${left}\") |> findRecord(fn: (key) => true, idx: 0)\nrrec = data |> filter(fn: (r) => r.testid == \"${right}\") |> findRecord(fn: (key) => true, idx: 0)\n\narray.from(rows: [\n  {metric: \"Requests\", left: float(v: lrec.requests), right: float(v: rrec.requests)},\n  {metric: \"Failed\", left: float(v: lrec.failed), right: float(v: rrec.failed)},\n  {metric: \"Error rate (%)\", left: lrec.error_rate * 100.0, right: rrec.error_rate * 100.0},\n  {metric: \"RPS (req/s)\", left: lrec.rps, right: rrec.rps},\n  {metric: \"Duration (s)\", left: lrec.duration_ms / 1000.0, right: rrec.duration_ms / 1000.0}\n])\n  |> map(fn: (r) => {\n      scale = if r.metric == \"Requests\" or r.metric == \"Failed\" then 1.0 else 10.0\n      return {r with left: math.round(x: r.left * scale) / scale, right: math.round(x: r.right * scale) / scale, scale: scale}\n  })\n  |> map(fn: (r) => ({r with delta: math.round(x: (r.right - r.left) * r.scale) / r.scale, delta_pct: if r.left > 0.0 then (r.right - r.left) / r.left * 100.0 else 0.0}))\n  |> map(fn: (r) => {\n      better = if r.metric == \"Requests\" or r.metric == \"RPS (req/s)\" then r.delta > 0.0 else r.delta < 0.0\n      return {r with style: if r.delta == 0.0 then \"{}\"\n          else if better then \"{\\\"color\\\": \\\"#73BF69\\\"}\" else \"{\\\"color\\\": \\\"#F2495C\\\"}\"}\n  })"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "metric"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Metric"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "left"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "displayName",
+                "value": "Left"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "right"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "displayName",
+                "value": "Right"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "delta"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "displayName",
+                "value": "Δ"
+              },
+              {
+                "id": "custom.styleField",
+                "value": "style"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "delta_pct"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "displayName",
+                "value": "Δ %"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "custom.styleField",
+                "value": "style"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "style"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom.viz",
+                "value": true
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "table": true,
+              "result": true,
+              "_start": true,
+              "_stop": true,
+              "_measurement": true,
+              "test_name": true,
+              "scale": true
+            },
+            "indexByName": {
+              "metric": 0,
+              "left": 1,
+              "right": 2,
+              "delta": 3,
+              "delta_pct": 4
+            },
+            "renameByName": {}
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      }
+    },
+    {
+      "type": "barchart",
+      "title": "min, ms",
+      "description": "Whole-test min response time of the Left and Right runs.",
+      "id": 31,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-k6"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 0,
+        "y": 24
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-k6"
+          },
+          "refId": "A",
+          "query": "import \"array\"\n\ndata = from(bucket: \"k6_summaries\")\n  |> range(start: -180d)\n  |> filter(fn: (r) => r._measurement == \"test_summary\" and r.test_name == \"${test_name}\")\n  |> filter(fn: (r) => r.env == \"${env}\")\n  |> rename(columns: {test_id: \"testid\"})\n  |> filter(fn: (r) => r._field =~ /^(testid|requests|failed|duration_ms|avg|min|max|p90|p95|p99|rps|error_rate)$/)\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> group()\n\nlrec = data |> filter(fn: (r) => r.testid == \"${left}\") |> findRecord(fn: (key) => true, idx: 0)\nrrec = data |> filter(fn: (r) => r.testid == \"${right}\") |> findRecord(fn: (key) => true, idx: 0)\n\narray.from(rows: [{metric: \"min\", left: lrec.min, right: rrec.min}])"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "decimals": 0,
+          "custom": {
+            "fillOpacity": 80,
+            "lineWidth": 1,
+            "stacking": {
+              "mode": "none"
+            }
+          },
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "left"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Left"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5794F2"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "right"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Right"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#B877D9"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "table": true,
+              "result": true,
+              "_start": true,
+              "_stop": true,
+              "_measurement": true,
+              "test_name": true,
+              "delta": true,
+              "delta_pct": true
+            },
+            "indexByName": {
+              "metric": 0,
+              "left": 1,
+              "right": 2
+            },
+            "renameByName": {}
+          }
+        }
+      ],
+      "options": {
+        "xField": "metric",
+        "orientation": "vertical",
+        "showValue": "always",
+        "barWidth": 0.9,
+        "groupWidth": 0.8,
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "type": "barchart",
+      "title": "avg, ms",
+      "description": "Whole-test avg response time of the Left and Right runs.",
+      "id": 32,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-k6"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 4,
+        "y": 24
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-k6"
+          },
+          "refId": "A",
+          "query": "import \"array\"\n\ndata = from(bucket: \"k6_summaries\")\n  |> range(start: -180d)\n  |> filter(fn: (r) => r._measurement == \"test_summary\" and r.test_name == \"${test_name}\")\n  |> filter(fn: (r) => r.env == \"${env}\")\n  |> rename(columns: {test_id: \"testid\"})\n  |> filter(fn: (r) => r._field =~ /^(testid|requests|failed|duration_ms|avg|min|max|p90|p95|p99|rps|error_rate)$/)\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> group()\n\nlrec = data |> filter(fn: (r) => r.testid == \"${left}\") |> findRecord(fn: (key) => true, idx: 0)\nrrec = data |> filter(fn: (r) => r.testid == \"${right}\") |> findRecord(fn: (key) => true, idx: 0)\n\narray.from(rows: [{metric: \"avg\", left: lrec.avg, right: rrec.avg}])"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "decimals": 0,
+          "custom": {
+            "fillOpacity": 80,
+            "lineWidth": 1,
+            "stacking": {
+              "mode": "none"
+            }
+          },
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "left"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Left"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5794F2"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "right"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Right"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#B877D9"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "table": true,
+              "result": true,
+              "_start": true,
+              "_stop": true,
+              "_measurement": true,
+              "test_name": true,
+              "delta": true,
+              "delta_pct": true
+            },
+            "indexByName": {
+              "metric": 0,
+              "left": 1,
+              "right": 2
+            },
+            "renameByName": {}
+          }
+        }
+      ],
+      "options": {
+        "xField": "metric",
+        "orientation": "vertical",
+        "showValue": "always",
+        "barWidth": 0.9,
+        "groupWidth": 0.8,
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "type": "barchart",
+      "title": "p90, ms",
+      "description": "Whole-test p90 response time of the Left and Right runs.",
+      "id": 33,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-k6"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 8,
+        "y": 24
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-k6"
+          },
+          "refId": "A",
+          "query": "import \"array\"\n\ndata = from(bucket: \"k6_summaries\")\n  |> range(start: -180d)\n  |> filter(fn: (r) => r._measurement == \"test_summary\" and r.test_name == \"${test_name}\")\n  |> filter(fn: (r) => r.env == \"${env}\")\n  |> rename(columns: {test_id: \"testid\"})\n  |> filter(fn: (r) => r._field =~ /^(testid|requests|failed|duration_ms|avg|min|max|p90|p95|p99|rps|error_rate)$/)\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> group()\n\nlrec = data |> filter(fn: (r) => r.testid == \"${left}\") |> findRecord(fn: (key) => true, idx: 0)\nrrec = data |> filter(fn: (r) => r.testid == \"${right}\") |> findRecord(fn: (key) => true, idx: 0)\n\narray.from(rows: [{metric: \"p90\", left: lrec.p90, right: rrec.p90}])"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "decimals": 0,
+          "custom": {
+            "fillOpacity": 80,
+            "lineWidth": 1,
+            "stacking": {
+              "mode": "none"
+            }
+          },
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "left"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Left"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5794F2"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "right"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Right"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#B877D9"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "table": true,
+              "result": true,
+              "_start": true,
+              "_stop": true,
+              "_measurement": true,
+              "test_name": true,
+              "delta": true,
+              "delta_pct": true
+            },
+            "indexByName": {
+              "metric": 0,
+              "left": 1,
+              "right": 2
+            },
+            "renameByName": {}
+          }
+        }
+      ],
+      "options": {
+        "xField": "metric",
+        "orientation": "vertical",
+        "showValue": "always",
+        "barWidth": 0.9,
+        "groupWidth": 0.8,
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "type": "barchart",
+      "title": "p95, ms",
+      "description": "Whole-test p95 response time of the Left and Right runs.",
+      "id": 34,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-k6"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 12,
+        "y": 24
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-k6"
+          },
+          "refId": "A",
+          "query": "import \"array\"\n\ndata = from(bucket: \"k6_summaries\")\n  |> range(start: -180d)\n  |> filter(fn: (r) => r._measurement == \"test_summary\" and r.test_name == \"${test_name}\")\n  |> filter(fn: (r) => r.env == \"${env}\")\n  |> rename(columns: {test_id: \"testid\"})\n  |> filter(fn: (r) => r._field =~ /^(testid|requests|failed|duration_ms|avg|min|max|p90|p95|p99|rps|error_rate)$/)\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> group()\n\nlrec = data |> filter(fn: (r) => r.testid == \"${left}\") |> findRecord(fn: (key) => true, idx: 0)\nrrec = data |> filter(fn: (r) => r.testid == \"${right}\") |> findRecord(fn: (key) => true, idx: 0)\n\narray.from(rows: [{metric: \"p95\", left: lrec.p95, right: rrec.p95}])"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "decimals": 0,
+          "custom": {
+            "fillOpacity": 80,
+            "lineWidth": 1,
+            "stacking": {
+              "mode": "none"
+            }
+          },
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "left"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Left"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5794F2"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "right"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Right"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#B877D9"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "table": true,
+              "result": true,
+              "_start": true,
+              "_stop": true,
+              "_measurement": true,
+              "test_name": true,
+              "delta": true,
+              "delta_pct": true
+            },
+            "indexByName": {
+              "metric": 0,
+              "left": 1,
+              "right": 2
+            },
+            "renameByName": {}
+          }
+        }
+      ],
+      "options": {
+        "xField": "metric",
+        "orientation": "vertical",
+        "showValue": "always",
+        "barWidth": 0.9,
+        "groupWidth": 0.8,
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "type": "barchart",
+      "title": "p99, ms",
+      "description": "Whole-test p99 response time of the Left and Right runs.",
+      "id": 35,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-k6"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 16,
+        "y": 24
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-k6"
+          },
+          "refId": "A",
+          "query": "import \"array\"\n\ndata = from(bucket: \"k6_summaries\")\n  |> range(start: -180d)\n  |> filter(fn: (r) => r._measurement == \"test_summary\" and r.test_name == \"${test_name}\")\n  |> filter(fn: (r) => r.env == \"${env}\")\n  |> rename(columns: {test_id: \"testid\"})\n  |> filter(fn: (r) => r._field =~ /^(testid|requests|failed|duration_ms|avg|min|max|p90|p95|p99|rps|error_rate)$/)\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> group()\n\nlrec = data |> filter(fn: (r) => r.testid == \"${left}\") |> findRecord(fn: (key) => true, idx: 0)\nrrec = data |> filter(fn: (r) => r.testid == \"${right}\") |> findRecord(fn: (key) => true, idx: 0)\n\narray.from(rows: [{metric: \"p99\", left: lrec.p99, right: rrec.p99}])"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "decimals": 0,
+          "custom": {
+            "fillOpacity": 80,
+            "lineWidth": 1,
+            "stacking": {
+              "mode": "none"
+            }
+          },
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "left"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Left"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5794F2"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "right"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Right"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#B877D9"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "table": true,
+              "result": true,
+              "_start": true,
+              "_stop": true,
+              "_measurement": true,
+              "test_name": true,
+              "delta": true,
+              "delta_pct": true
+            },
+            "indexByName": {
+              "metric": 0,
+              "left": 1,
+              "right": 2
+            },
+            "renameByName": {}
+          }
+        }
+      ],
+      "options": {
+        "xField": "metric",
+        "orientation": "vertical",
+        "showValue": "always",
+        "barWidth": 0.9,
+        "groupWidth": 0.8,
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "type": "barchart",
+      "title": "max, ms",
+      "description": "Whole-test max response time of the Left and Right runs.",
+      "id": 36,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-k6"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 20,
+        "y": 24
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-k6"
+          },
+          "refId": "A",
+          "query": "import \"array\"\n\ndata = from(bucket: \"k6_summaries\")\n  |> range(start: -180d)\n  |> filter(fn: (r) => r._measurement == \"test_summary\" and r.test_name == \"${test_name}\")\n  |> filter(fn: (r) => r.env == \"${env}\")\n  |> rename(columns: {test_id: \"testid\"})\n  |> filter(fn: (r) => r._field =~ /^(testid|requests|failed|duration_ms|avg|min|max|p90|p95|p99|rps|error_rate)$/)\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> group()\n\nlrec = data |> filter(fn: (r) => r.testid == \"${left}\") |> findRecord(fn: (key) => true, idx: 0)\nrrec = data |> filter(fn: (r) => r.testid == \"${right}\") |> findRecord(fn: (key) => true, idx: 0)\n\narray.from(rows: [{metric: \"max\", left: lrec.max, right: rrec.max}])"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "decimals": 0,
+          "custom": {
+            "fillOpacity": 80,
+            "lineWidth": 1,
+            "stacking": {
+              "mode": "none"
+            }
+          },
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "left"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Left"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5794F2"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "right"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Right"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#B877D9"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "table": true,
+              "result": true,
+              "_start": true,
+              "_stop": true,
+              "_measurement": true,
+              "test_name": true,
+              "delta": true,
+              "delta_pct": true
+            },
+            "indexByName": {
+              "metric": 0,
+              "left": 1,
+              "right": 2
+            },
+            "renameByName": {}
+          }
+        }
+      ],
+      "options": {
+        "xField": "metric",
+        "orientation": "vertical",
+        "showValue": "always",
+        "barWidth": 0.9,
+        "groupWidth": 0.8,
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "type": "row",
+      "title": "Endpoints: latency ${lat_pct}",
+      "id": 41,
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 31
+      },
+      "repeat": "lat_pct"
+    },
+    {
+      "type": "table",
+      "title": "Latency ${lat_pct} by endpoint",
+      "description": "Left and right ${lat_pct} of every endpoint present in both runs, with the change.",
+      "id": 37,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-k6"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 10,
+        "x": 0,
+        "y": 32
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-k6"
+          },
+          "refId": "A",
+          "query": "import \"math\"\ndata = from(bucket: \"k6_summaries\")\n  |> range(start: -180d)\n  |> filter(fn: (r) => r._measurement == \"endpoint_summary\" and r.test_name == \"${test_name}\")\n  |> filter(fn: (r) => r.env == \"${env}\")\n  |> rename(columns: {test_id: \"testid\", request_name: \"endpoint\"})\n  |> filter(fn: (r) => r._field =~ /^(${lat_pct}|error_rate|rps|testid)$/)\n  |> pivot(rowKey: [\"_time\", \"endpoint\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> keep(columns: [\"_time\", \"endpoint\", \"testid\", \"${lat_pct}\", \"error_rate\", \"rps\"])\n  |> rename(fn: (column) => if column == \"${lat_pct}\" then \"lat\" else column)\n  |> group()\n\nlt = data |> filter(fn: (r) => r.testid == \"${left}\") |> keep(columns: [\"endpoint\", \"lat\", \"error_rate\", \"rps\"])\n  |> rename(columns: {lat: \"lat_l\", error_rate: \"err_l\", rps: \"rps_l\"})\nrt = data |> filter(fn: (r) => r.testid == \"${right}\") |> keep(columns: [\"endpoint\", \"lat\", \"error_rate\", \"rps\"])\n  |> rename(columns: {lat: \"lat_r\", error_rate: \"err_r\", rps: \"rps_r\"})\n\njoin(tables: {l: lt, r: rt}, on: [\"endpoint\"])\n  |> group()\n  |> map(fn: (r) => ({r with lat_l: math.round(x: r.lat_l), lat_r: math.round(x: r.lat_r)}))\n  |> map(fn: (r) => ({r with\n      lat_d: r.lat_r - r.lat_l,\n      lat_pct: if r.lat_l > 0.0 then (r.lat_r - r.lat_l) / r.lat_l * 100.0 else 0.0,\n      err_d: (r.err_r - r.err_l) * 100.0,\n      rps_pct: if r.rps_l > 0.0 then (r.rps_r - r.rps_l) / r.rps_l * 100.0 else 0.0}))\n  |> sort(columns: [\"endpoint\"])"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "endpoint"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Endpoint"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "lat_l"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "displayName",
+                "value": "Latency · Left"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "lat_r"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "displayName",
+                "value": "Latency · Right"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "lat_d"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "displayName",
+                "value": "Latency · Δ ms"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "text",
+                      "value": -0.5
+                    },
+                    {
+                      "color": "red",
+                      "value": 0.5
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "lat_pct"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "displayName",
+                "value": "Latency · Δ %"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "text",
+                      "value": -0.05
+                    },
+                    {
+                      "color": "red",
+                      "value": 0.05
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "table": true,
+              "result": true,
+              "_start": true,
+              "_stop": true,
+              "_measurement": true,
+              "test_name": true,
+              "err_l": true,
+              "err_r": true,
+              "err_d": true,
+              "rps_l": true,
+              "rps_r": true,
+              "rps_pct": true
+            },
+            "indexByName": {
+              "endpoint": 0,
+              "lat_l": 1,
+              "lat_r": 2,
+              "lat_d": 3,
+              "lat_pct": 4
+            },
+            "renameByName": {}
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "endpoint",
+            "desc": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "barchart",
+      "title": "Latency ${lat_pct}: Left vs Right",
+      "description": "",
+      "id": 38,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-k6"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 14,
+        "x": 10,
+        "y": 32
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-k6"
+          },
+          "refId": "A",
+          "query": "data = from(bucket: \"k6_summaries\")\n  |> range(start: -180d)\n  |> filter(fn: (r) => r._measurement == \"endpoint_summary\" and r.test_name == \"${test_name}\")\n  |> filter(fn: (r) => r.env == \"${env}\")\n  |> rename(columns: {test_id: \"testid\", request_name: \"endpoint\"})\n  |> filter(fn: (r) => r._field =~ /^(${lat_pct}|error_rate|rps|testid)$/)\n  |> pivot(rowKey: [\"_time\", \"endpoint\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> keep(columns: [\"_time\", \"endpoint\", \"testid\", \"${lat_pct}\", \"error_rate\", \"rps\"])\n  |> rename(fn: (column) => if column == \"${lat_pct}\" then \"lat\" else column)\n  |> group()\n\nlt = data |> filter(fn: (r) => r.testid == \"${left}\") |> keep(columns: [\"endpoint\", \"lat\", \"error_rate\", \"rps\"])\n  |> rename(columns: {lat: \"lat_l\", error_rate: \"err_l\", rps: \"rps_l\"})\nrt = data |> filter(fn: (r) => r.testid == \"${right}\") |> keep(columns: [\"endpoint\", \"lat\", \"error_rate\", \"rps\"])\n  |> rename(columns: {lat: \"lat_r\", error_rate: \"err_r\", rps: \"rps_r\"})\n\njoin(tables: {l: lt, r: rt}, on: [\"endpoint\"])\n  |> group()\n  |> map(fn: (r) => ({r with\n      lat_d: r.lat_r - r.lat_l,\n      lat_pct: if r.lat_l > 0.0 then (r.lat_r - r.lat_l) / r.lat_l * 100.0 else 0.0,\n      err_d: (r.err_r - r.err_l) * 100.0,\n      rps_pct: if r.rps_l > 0.0 then (r.rps_r - r.rps_l) / r.rps_l * 100.0 else 0.0}))\n  |> sort(columns: [\"endpoint\"])"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "decimals": 0,
+          "custom": {
+            "fillOpacity": 80,
+            "lineWidth": 1,
+            "stacking": {
+              "mode": "none"
+            }
+          },
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "lat_l"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Left"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5794F2"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "lat_r"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Right"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#B877D9"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "lat_d": true,
+              "lat_pct": true,
+              "err_l": true,
+              "err_r": true,
+              "err_d": true,
+              "rps_l": true,
+              "rps_r": true,
+              "rps_pct": true
+            },
+            "indexByName": {
+              "endpoint": 0,
+              "lat_l": 1,
+              "lat_r": 2
+            },
+            "renameByName": {}
+          }
+        }
+      ],
+      "options": {
+        "xField": "endpoint",
+        "orientation": "vertical",
+        "showValue": "never",
+        "barWidth": 0.9,
+        "groupWidth": 0.7,
+        "xTickLabelRotation": -45,
+        "xTickLabelSpacing": 0,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "type": "row",
+      "title": "Endpoints: error rate",
+      "id": 42,
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 40
+      }
+    },
+    {
+      "type": "table",
+      "title": "Error rate by endpoint",
+      "description": "Left and right error rate of every endpoint present in both runs, with the change in percentage points.",
+      "id": 39,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-k6"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 10,
+        "x": 0,
+        "y": 41
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-k6"
+          },
+          "refId": "A",
+          "query": "data = from(bucket: \"k6_summaries\")\n  |> range(start: -180d)\n  |> filter(fn: (r) => r._measurement == \"endpoint_summary\" and r.test_name == \"${test_name}\")\n  |> filter(fn: (r) => r.env == \"${env}\")\n  |> rename(columns: {test_id: \"testid\", request_name: \"endpoint\"})\n  |> filter(fn: (r) => r._field =~ /^(p95|error_rate|rps|testid)$/)\n  |> pivot(rowKey: [\"_time\", \"endpoint\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> keep(columns: [\"_time\", \"endpoint\", \"testid\", \"p95\", \"error_rate\", \"rps\"])\n  |> rename(fn: (column) => if column == \"p95\" then \"lat\" else column)\n  |> group()\n\nlt = data |> filter(fn: (r) => r.testid == \"${left}\") |> keep(columns: [\"endpoint\", \"lat\", \"error_rate\", \"rps\"])\n  |> rename(columns: {lat: \"lat_l\", error_rate: \"err_l\", rps: \"rps_l\"})\nrt = data |> filter(fn: (r) => r.testid == \"${right}\") |> keep(columns: [\"endpoint\", \"lat\", \"error_rate\", \"rps\"])\n  |> rename(columns: {lat: \"lat_r\", error_rate: \"err_r\", rps: \"rps_r\"})\n\njoin(tables: {l: lt, r: rt}, on: [\"endpoint\"])\n  |> group()\n  |> map(fn: (r) => ({r with\n      lat_d: r.lat_r - r.lat_l,\n      lat_pct: if r.lat_l > 0.0 then (r.lat_r - r.lat_l) / r.lat_l * 100.0 else 0.0,\n      err_d: (r.err_r - r.err_l) * 100.0,\n      rps_pct: if r.rps_l > 0.0 then (r.rps_r - r.rps_l) / r.rps_l * 100.0 else 0.0}))\n  |> sort(columns: [\"endpoint\"])"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "endpoint"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Endpoint"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "err_l"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "displayName",
+                "value": "Errors · Left"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "err_r"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "displayName",
+                "value": "Errors · Right"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "err_d"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "displayName",
+                "value": "Errors · Δ p.p."
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "text",
+                      "value": 0
+                    },
+                    {
+                      "color": "red",
+                      "value": 1e-09
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "table": true,
+              "result": true,
+              "_start": true,
+              "_stop": true,
+              "_measurement": true,
+              "test_name": true,
+              "lat_l": true,
+              "lat_r": true,
+              "lat_d": true,
+              "lat_pct": true,
+              "rps_l": true,
+              "rps_r": true,
+              "rps_pct": true
+            },
+            "indexByName": {
+              "endpoint": 0,
+              "err_l": 1,
+              "err_r": 2,
+              "err_d": 3
+            },
+            "renameByName": {}
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "endpoint",
+            "desc": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "barchart",
+      "title": "Error rate: Left vs Right",
+      "description": "",
+      "id": 27,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-k6"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 14,
+        "x": 10,
+        "y": 41
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-k6"
+          },
+          "refId": "A",
+          "query": "data = from(bucket: \"k6_summaries\")\n  |> range(start: -180d)\n  |> filter(fn: (r) => r._measurement == \"endpoint_summary\" and r.test_name == \"${test_name}\")\n  |> filter(fn: (r) => r.env == \"${env}\")\n  |> rename(columns: {test_id: \"testid\", request_name: \"endpoint\"})\n  |> filter(fn: (r) => r._field =~ /^(p95|error_rate|rps|testid)$/)\n  |> pivot(rowKey: [\"_time\", \"endpoint\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> keep(columns: [\"_time\", \"endpoint\", \"testid\", \"p95\", \"error_rate\", \"rps\"])\n  |> rename(fn: (column) => if column == \"p95\" then \"lat\" else column)\n  |> group()\n\nlt = data |> filter(fn: (r) => r.testid == \"${left}\") |> keep(columns: [\"endpoint\", \"lat\", \"error_rate\", \"rps\"])\n  |> rename(columns: {lat: \"lat_l\", error_rate: \"err_l\", rps: \"rps_l\"})\nrt = data |> filter(fn: (r) => r.testid == \"${right}\") |> keep(columns: [\"endpoint\", \"lat\", \"error_rate\", \"rps\"])\n  |> rename(columns: {lat: \"lat_r\", error_rate: \"err_r\", rps: \"rps_r\"})\n\njoin(tables: {l: lt, r: rt}, on: [\"endpoint\"])\n  |> group()\n  |> map(fn: (r) => ({r with\n      lat_d: r.lat_r - r.lat_l,\n      lat_pct: if r.lat_l > 0.0 then (r.lat_r - r.lat_l) / r.lat_l * 100.0 else 0.0,\n      err_d: (r.err_r - r.err_l) * 100.0,\n      rps_pct: if r.rps_l > 0.0 then (r.rps_r - r.rps_l) / r.rps_l * 100.0 else 0.0}))\n  |> sort(columns: [\"endpoint\"])"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "custom": {
+            "fillOpacity": 80,
+            "lineWidth": 1,
+            "stacking": {
+              "mode": "none"
+            }
+          },
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "err_l"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Left"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5794F2"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "err_r"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Right"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#B877D9"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "lat_l": true,
+              "lat_r": true,
+              "lat_d": true,
+              "lat_pct": true,
+              "err_d": true,
+              "rps_l": true,
+              "rps_r": true,
+              "rps_pct": true
+            },
+            "indexByName": {
+              "endpoint": 0,
+              "err_l": 1,
+              "err_r": 2
+            },
+            "renameByName": {}
+          }
+        }
+      ],
+      "options": {
+        "xField": "endpoint",
+        "orientation": "vertical",
+        "showValue": "never",
+        "barWidth": 0.9,
+        "groupWidth": 0.7,
+        "xTickLabelRotation": -45,
+        "xTickLabelSpacing": 0,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "type": "row",
+      "title": "Endpoints: RPS",
+      "id": 43,
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 49
+      }
+    },
+    {
+      "type": "table",
+      "title": "RPS by endpoint",
+      "description": "Left and right requests per second of every endpoint present in both runs, with the change.",
+      "id": 40,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-k6"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 10,
+        "x": 0,
+        "y": 50
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-k6"
+          },
+          "refId": "A",
+          "query": "import \"math\"\ndata = from(bucket: \"k6_summaries\")\n  |> range(start: -180d)\n  |> filter(fn: (r) => r._measurement == \"endpoint_summary\" and r.test_name == \"${test_name}\")\n  |> filter(fn: (r) => r.env == \"${env}\")\n  |> rename(columns: {test_id: \"testid\", request_name: \"endpoint\"})\n  |> filter(fn: (r) => r._field =~ /^(p95|error_rate|rps|testid)$/)\n  |> pivot(rowKey: [\"_time\", \"endpoint\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> keep(columns: [\"_time\", \"endpoint\", \"testid\", \"p95\", \"error_rate\", \"rps\"])\n  |> rename(fn: (column) => if column == \"p95\" then \"lat\" else column)\n  |> group()\n\nlt = data |> filter(fn: (r) => r.testid == \"${left}\") |> keep(columns: [\"endpoint\", \"lat\", \"error_rate\", \"rps\"])\n  |> rename(columns: {lat: \"lat_l\", error_rate: \"err_l\", rps: \"rps_l\"})\nrt = data |> filter(fn: (r) => r.testid == \"${right}\") |> keep(columns: [\"endpoint\", \"lat\", \"error_rate\", \"rps\"])\n  |> rename(columns: {lat: \"lat_r\", error_rate: \"err_r\", rps: \"rps_r\"})\n\njoin(tables: {l: lt, r: rt}, on: [\"endpoint\"])\n  |> group()\n  |> map(fn: (r) => ({r with rps_l: math.round(x: r.rps_l * 10.0) / 10.0, rps_r: math.round(x: r.rps_r * 10.0) / 10.0}))\n  |> map(fn: (r) => ({r with\n      lat_d: r.lat_r - r.lat_l,\n      lat_pct: if r.lat_l > 0.0 then (r.lat_r - r.lat_l) / r.lat_l * 100.0 else 0.0,\n      err_d: (r.err_r - r.err_l) * 100.0,\n      rps_pct: if r.rps_l > 0.0 then (r.rps_r - r.rps_l) / r.rps_l * 100.0 else 0.0}))\n  |> sort(columns: [\"endpoint\"])"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "endpoint"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Endpoint"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "rps_l"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "reqps"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "displayName",
+                "value": "RPS · Left"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "rps_r"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "reqps"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "displayName",
+                "value": "RPS · Right"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "rps_pct"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "displayName",
+                "value": "RPS · Δ %"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "text",
+                      "value": -0.05
+                    },
+                    {
+                      "color": "green",
+                      "value": 0.05
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "table": true,
+              "result": true,
+              "_start": true,
+              "_stop": true,
+              "_measurement": true,
+              "test_name": true,
+              "lat_l": true,
+              "lat_r": true,
+              "lat_d": true,
+              "lat_pct": true,
+              "err_l": true,
+              "err_r": true,
+              "err_d": true
+            },
+            "indexByName": {
+              "endpoint": 0,
+              "rps_l": 1,
+              "rps_r": 2,
+              "rps_pct": 3
+            },
+            "renameByName": {}
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "endpoint",
+            "desc": false
+          }
+        ]
+      }
+    },
+    {
+      "type": "barchart",
+      "title": "RPS: Left vs Right",
+      "description": "",
+      "id": 28,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "influx-k6"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 14,
+        "x": 10,
+        "y": 50
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "influx-k6"
+          },
+          "refId": "A",
+          "query": "data = from(bucket: \"k6_summaries\")\n  |> range(start: -180d)\n  |> filter(fn: (r) => r._measurement == \"endpoint_summary\" and r.test_name == \"${test_name}\")\n  |> filter(fn: (r) => r.env == \"${env}\")\n  |> rename(columns: {test_id: \"testid\", request_name: \"endpoint\"})\n  |> filter(fn: (r) => r._field =~ /^(p95|error_rate|rps|testid)$/)\n  |> pivot(rowKey: [\"_time\", \"endpoint\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> keep(columns: [\"_time\", \"endpoint\", \"testid\", \"p95\", \"error_rate\", \"rps\"])\n  |> rename(fn: (column) => if column == \"p95\" then \"lat\" else column)\n  |> group()\n\nlt = data |> filter(fn: (r) => r.testid == \"${left}\") |> keep(columns: [\"endpoint\", \"lat\", \"error_rate\", \"rps\"])\n  |> rename(columns: {lat: \"lat_l\", error_rate: \"err_l\", rps: \"rps_l\"})\nrt = data |> filter(fn: (r) => r.testid == \"${right}\") |> keep(columns: [\"endpoint\", \"lat\", \"error_rate\", \"rps\"])\n  |> rename(columns: {lat: \"lat_r\", error_rate: \"err_r\", rps: \"rps_r\"})\n\njoin(tables: {l: lt, r: rt}, on: [\"endpoint\"])\n  |> group()\n  |> map(fn: (r) => ({r with\n      lat_d: r.lat_r - r.lat_l,\n      lat_pct: if r.lat_l > 0.0 then (r.lat_r - r.lat_l) / r.lat_l * 100.0 else 0.0,\n      err_d: (r.err_r - r.err_l) * 100.0,\n      rps_pct: if r.rps_l > 0.0 then (r.rps_r - r.rps_l) / r.rps_l * 100.0 else 0.0}))\n  |> sort(columns: [\"endpoint\"])"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "decimals": 2,
+          "custom": {
+            "fillOpacity": 80,
+            "lineWidth": 1,
+            "stacking": {
+              "mode": "none"
+            }
+          },
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "rps_l"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Left"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5794F2"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "rps_r"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Right"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#B877D9"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "lat_l": true,
+              "lat_r": true,
+              "lat_d": true,
+              "lat_pct": true,
+              "err_l": true,
+              "err_r": true,
+              "err_d": true,
+              "rps_pct": true
+            },
+            "indexByName": {
+              "endpoint": 0,
+              "rps_l": 1,
+              "rps_r": 2
+            },
+            "renameByName": {}
+          }
+        }
+      ],
+      "options": {
+        "xField": "endpoint",
+        "orientation": "vertical",
+        "showValue": "never",
+        "barWidth": 0.9,
+        "groupWidth": 0.7,
+        "xTickLabelRotation": -45,
+        "xTickLabelSpacing": 0,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    }
+  ],
+  "links": [
+    {
+      "title": "Trends",
+      "type": "link",
+      "icon": "dashboard",
+      "tooltip": "",
+      "url": "/d/k6-trends?var-env=${env:percentencode}&var-test_name=${test_name:percentencode}",
+      "asDropdown": false,
+      "targetBlank": false,
+      "includeVars": false,
+      "keepTime": false,
+      "tags": []
+    }
+  ]
+}
